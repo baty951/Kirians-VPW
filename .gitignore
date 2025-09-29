@@ -1,0 +1,4 @@
+_defclient.config
+*.cfg
+configs
+venv
