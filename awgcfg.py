@@ -28,7 +28,7 @@ parser.add_option("-p", "--port", dest="port", default = None, type = 'int')
 parser.add_option("", "--make", dest="makecfg", default = "")
 parser.add_option("", "--tun", dest="tun", default = "")
 parser.add_option("", "--create", dest="create", action="store_true", default = False)
-parser.add_option("", "--dir", dest="dir", default = ".")
+parser.add_option("", "--dir", dest="dir", default = "./configs")
 (opt, args) = parser.parse_args()
 
 

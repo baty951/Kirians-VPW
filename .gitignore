@@ -1,4 +1,9 @@
 _defclient.config
-*.cfg
+.env
 configs
 venv
+*.sql
+*.save
+test.*
+*.service
+__pycache__
