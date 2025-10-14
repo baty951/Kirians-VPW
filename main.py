@@ -1,3 +1,5 @@
+from locale import currency
+
 from telebot.async_telebot import AsyncTeleBot
 import asyncio, os
 from telebot import types
@@ -7,8 +9,10 @@ import db
 from datetime import datetime as dt
 from datetime import timedelta as td
 import time
+from yookassa import Configuration
 
-time.sleep(10)
+
+#time.sleep(10)
 
 
 # Load configuration
@@ -17,6 +21,8 @@ TOKEN = os.getenv('TOKEN')
 ADMINS = list(map(int, os.getenv('ADMINS').split(',')))
 ADMIN = os.getenv('ADMIN')
 CONF_DIR = os.getenv('CONF_DIR', './configs')
+Configuration.account_id = os.getenv('YOO_ID')
+Configuration.secret_key = os.getenv('YOO_KEY')
 
 # Initialize bot
 bot = AsyncTeleBot(TOKEN, parse_mode='HTML')
@@ -24,7 +30,6 @@ bot = AsyncTeleBot(TOKEN, parse_mode='HTML')
 # Command Handlers
 @bot.message_handler(commands=['start','s'])
 async def send_welcome(m):
-    print(bot.get_updates())
     u = await db.fetchone("SELECT id, locale FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     if not u:
         uid = await db.execute(
@@ -52,16 +57,14 @@ async def send_help(m):
             "/start - Start the bot\n"
             "/help - Show this help message\n"
             "/newconfig - Buy new config\n"
-            "/myconfigs - Get all your configs\n"
-            "/delconfig - Delete config"
+            "/myconfigs - Get all your configs"
         )
     else:
         help_text = (
             "/start - Запустить бота\n"
             "/help - Отобразить это сообщение\n"
             "/newconfig - Купить новый конфиг\n"
-            "/myconfigs - Получить все твои конфиги\n"
-            "/delconfig - Удалить конфиг"
+            "/myconfigs - Получить все твои конфиги"
         )
     
     if (u['admin_lvl'] > 0) and (u['locale'] == "en"):
@@ -77,11 +80,12 @@ async def send_help(m):
 
 @bot.message_handler(commands=['myconfigs', 'mycfg', 'mcfg'])
 async def myconfigs(m):
+    print(m)
     u = await db.fetchone("SELECT id FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     if not u:
         return await bot.reply_to(m, "Сначала /start")
     
-    rows = await db.fetchall("SELECT * FROM configs WHERE user_id=%s", (u['id']))
+    rows = await db.fetchall("SELECT * FROM configs WHERE user_id=%s and status='active'", (u['id']))
     
     if not rows:
         return await bot.reply_to(m, "У тебя пока нет конфигов.")
@@ -247,30 +251,51 @@ async def  callback_query(c):
         cfgs = (await db.fetchone("SELECT configs_count FROM users WHERE id=%s", (u['id'])))['configs_count']
         location = (await db.fetchone("SELECT name FROM locations WHERE id=%s", (int(c.data.replace("newcfg", "")))))['name']
         cfg_id = await db.execute('INSERT INTO configs (user_id, name, location_id, valid_until) VALUES (%s, %s, %s, %s)',
-                   (u['id'], None, int(c.data.replace("newcfg", "")), (str(dt.now()+td(seconds=20)).split("."))[0]))
+                    (u['id'], None, int(c.data.replace("newcfg", "")), (str(dt.now()+td(days=30)).split("."))[0]))
         await db.execute("UPDATE configs SET name=%s WHERE id=%s", (f"{location}_{c.from_user.username}_{cfg_id}", cfg_id))
         subprocess.run(['python3', 'awgcfg.py', '-a', f"{location}_{c.from_user.username}_{cfg_id}"])
         subprocess.run(['python3', 'awgcfg.py', '-c', '--dir', str(CONF_DIR)])
+        subprocess.run(['systemctl', 'restart', 'awg-quick@awg0.service'])
         await db.execute('UPDATE users SET configs_count=%s WHERE id=%s', (cfgs := (cfgs+1), u['id']))
         with open(CONF_DIR+str(f"/{location}_{c.from_user.username}_{cfg_id}")+".conf", "rb") as file:
             await bot.send_document(c.message.chat.id, file)
         return await bot.answer_callback_query(c.id, "")
+    else:
+        return await bot.answer_callback_query(c.id, "Function isn't work now, soon...", show_alert=True)
         
-        
+
+async def invoice(chat_id, cfg_name, description, label, price):
+    title = "Продление аккаунта"
+    currency = "RUB"
+    prices = [types.LabeledPrice(label=label, amount=price)]
+    payload = f"user:{chat_id}|cfg:{cfg_name}"
+
+    await bot.send_invoice(
+        chat_id=chat_id,
+        title=title,
+        description=description,
+        invoice_payload=payload,
+        provider_token=PROVIDER_TOKEN,
+        currency=currency,
+        prices=prices,
+        start_parameter="buy_cfg_30d",  # произвольный маркер, нужен для deep-link
+        need_name=False, need_phone_number=False, need_email=False, need_shipping_address=False,
+        is_flexible=False  # если True — нужно ещё обрабатывать shipping_query
+    )
+
+
 #daily check configs 
 async def daily_check(x):
     d = dt.now()
     await asyncio.sleep(x - d.hour * 3600 - d.minute * 60 - d.second)
     while True:
         await db.execute("UPDATE configs SET status='expired' WHERE status='active' AND valid_until <= NOW()")
-        print("hi")
-        ban = await db.fetchall("SELECT id, user_id, name FROM configs WHERE status ='expired'")
-        print("hi")
+        ban = await db.fetchall("SELECT id, user_id, name FROM configs WHERE status ='expired' AND updated_at >= NOW() - INTERVAL 10 SECOND")
         for i in ban:
             u = await db.fetchone("SELECT tg_user_id, locale FROM users WHERE id=%s", (i['user_id']))
             subprocess.run(['python3', 'awgcfg.py', '-d', f"{i['name']}"])
-            await db.execute("DELETE FROM configs WHERE id=%s", (i['id'],))
-            await db.execute("UPDATE users SET configs=configs-1 WHERE id=%s", (i['user_id'],))
+            subprocess.run(['systemctl', 'restart', 'awg-quick@awg0.service'])
+            await db.execute("UPDATE users SET configs_count = GREATEST(configs_count - 1, 0) WHERE id=%s", (i['user_id'],))
             await bot.send_message(u['tg_user_id'], f"Твой конфиг {i['name']} закончился и был удален")
         warn = await db.fetchall("SELECT c.id, c.user_id, c.name, TIMESTAMPDIFF(DAY, NOW(), c.valid_until) AS days_left FROM configs c WHERE c.status='active' AND c.valid_until > NOW() AND TIMESTAMPDIFF(DAY, NOW(), c.valid_until) BETWEEN 1 AND 3")
         for i in warn:
@@ -283,7 +308,7 @@ async def daily_check(x):
 async def main():
     await db.init_pool()
     await bot.delete_webhook(drop_pending_updates=True)
-    daily_task = asyncio.create_task(daily_check(10))
+    daily_task = asyncio.create_task(daily_check(3600))
     bot_task = asyncio.create_task(bot.infinity_polling(allowed_updates=['message','callback_query']))
     
     await daily_task
