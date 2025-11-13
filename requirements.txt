@@ -19,6 +19,7 @@ propcache==0.3.2
 psutil==7.1.0
 pycountry==24.6.1
 pycparser==2.23
+pydevd-pycharm==252.26830.99
 PyMySQL==1.1.2
 pyTelegramBotAPI==4.29.1
 python-dotenv==1.1.1
@@ -29,4 +30,3 @@ urllib3==2.5.0
 watchdog==6.0.0
 wrapt==1.17.3
 yarl==1.20.1
-yookassa==3.7.1
