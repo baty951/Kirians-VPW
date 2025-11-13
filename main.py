@@ -19,7 +19,7 @@ TOKEN = os.getenv('TOKEN')
 PROVIDER_TOKEN = os.getenv('PROVIDER_TOKEN').strip()
 CONF_DIR = os.getenv('CONF_DIR', './configs')
 cfg_tariff = {"9min":7000, "59min":10000, "11h":12000, "23h":15000, "2d":20000, "7d":25000, "till end beta":66666}
-pay_operations = []
+pay_operations = dict()
 conf_changes=dict()
 balance_depos=[]
 
@@ -289,7 +289,7 @@ async def pre_checkout(q):
             await bot.answer_pre_checkout_query(q.id, ok=True)
             u = await db.fetchone ("SELECT id FROM users WHERE tg_user_id=%s", (q.from_user.id))
             await db.execute('INSERT INTO payments (user_id, config_id, amount, currency) VALUES (%s, %s, %s, %s)', (u['id'], q.invoice_payload.split("_")[-1], q.total_amount, q.currency))
-        elif q.invoice_payload.startswith("config_coontin"):
+        elif q.invoice_payload.startswith("config_contin"):
             await bot.answer_pre_checkout_query(q.id, ok=True)
             pay_operations[q.invoice_payload] = await db.execute('INSERT INTO payments (user_id, config_id, amount, currency, description) VALUES (%s, %s, %s, %s, %s)', (u['id'], q.invoice_payload.split("_")[-1], q.total_amount, q.currency, q.invoice_payload))
         elif q.invoice_payload.startswith("balance"):
@@ -327,6 +327,7 @@ async def successful_payment(m):
             await bot.send_photo(m.chat.id, qr)
         with open(CONF_DIR+str(cfg_name)+".conf", "rb") as file:
             await bot.send_document(m.chat.id, document=types.InputFile(file, file_name="".join(cfg_name.split("_")[1:])+".conf"))
+            
     elif payment.invoice_payload.startswith("balance"):
         summ = payment.invoice_payload.split("_")[-2]
         del(pay_operations[payment.invoice_payload])
@@ -334,11 +335,14 @@ async def successful_payment(m):
                         ('paid', json.dumps(m.json, ensure_ascii=False), payment.provider_payment_charge_id, payment.telegram_payment_charge_id, payment.invoice_payload.split("_")[-1]))
         await db.execute(f"UPDATE users SET balance = balance + {summ} WHERE tg_user_id={m.from_user.id}")
         await bot.send_message(m.chat.id, f"Баланс успешно пополнен на {summ}руб.")
+        
     elif payment.invoice_payload.startswith("config_contin"):
         del(pay_operations[payment.invoice_payload])
         data = payment.invoice_payload.split("_")[-2:]
-        await db.execute("UPDATE configs SET valid_until = valid_until + %s WHERE id = %s", (to_msql(data[-1]) ,data[0]))
-        cfg = await db.fetchone("SELECT code_name, name FROM configs WHERE id=%s", (data[0]))
+        amount, unit = await to_msql(data[0])
+        cfg_id = int(data[1])
+        await db.execute("UPDATE configs SET valid_until=TIMESTAMPADD("+unit+", %s, valid_until) WHERE id=%s", (amount, cfg_id))
+        cfg = await db.fetchone("SELECT code_name, name FROM configs WHERE id=%s", (cfg_id))
         await bot.send_message(m.chat.id, text=(f"Конфиг {cfg["name"] if cfg["name"] else cfg["code_name"]} был успешно продлен"))
         
         
@@ -490,13 +494,13 @@ async def to_td(s: str) -> td:
 async def to_msql(s: str) -> str:
     s = s.strip().lower()
     if s.endswith("min"):
-        return f"{s[:-3]} MINUTE"
+        return f"{s[:-3]}", "MINUTE"
     elif s.endswith("h"):
-        return f"{s[:-1]} HOUR"
+        return f"{s[:-1]}", "HOUR"
     elif s.endswith("d"):
-        return f"{s[:-1]} DAY"
+        return f"{s[:-1]}", "DAY"
     else:
-        return f"1 MONTH"
+        return f"1", "MONTH"
       
 
 
