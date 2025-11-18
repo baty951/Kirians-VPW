@@ -64,11 +64,12 @@ async def menu(m):
             f"У тебя {u['configs_count']} конфигов"
         )
         buttons = [
-            types.InlineKeyboardButton(text="Мои конфиги", callback_data="menu_myconfigs"),
+            types.InlineKeyboardButton(text="Мои конфиги", callback_data="menu_config"),
             types.InlineKeyboardButton(text="Новый конфиг", callback_data="menu_newconfig")
         ]
         keyboard = types.InlineKeyboardMarkup(row_width = 2)
-        keyboard.add(*buttons)
+        keyboard.row(types.InlineKeyboardButton(text="Мои конфиги", callback_data="menu_config"))
+        keyboard.row(types.InlineKeyboardButton(text="Купить конфиг", callback_data="menu_newconfig"))
         await bot.send_message(chat_id=m.chat.id, text=menu_text, reply_markup=keyboard)
         
     await clear(m.from_user.id)
@@ -224,34 +225,46 @@ async def message_hand(m):
     u = await db.fetchone("SELECT id, locale, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id))
     if not u:
         return await bot.send_message(m, "Write frist /start")
-    elif m.from_user.id in conf_changes.keys():
-        if conf_changes[m.from_user.id].split("_")[0] == "name":
+    elif u['id'] in conf_changes.keys():
+        if conf_changes[u['id']].split("_")[0] == "name":
             config_name = m.text
             if len(m.text) <= 32:
-                cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE user_id=(SELECT id FROM users WHERE tg_user_id=%s)", (m.from_user.id))
+                cfg_id = conf_changes[u['id']].split("_")[1]
+                cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id=%s)", (cfg_id))
                 keyboard = types.InlineKeyboardMarkup(row_width=2)
                 buttons = [
-                    types.InlineKeyboardButton("Ok✅", callback_data=f"change_name_{conf_changes[m.from_user.id].split("_")[-1]}_{m.text}"),
+                    types.InlineKeyboardButton("Ok✅", callback_data=f"change_name_{cfg_id}_{m.text}"),
                     types.InlineKeyboardButton("No❌", callback_data="delete_mess")
                 ]
                 keyboard.add(*buttons)
-                del(conf_changes[m.from_user.id])
-                await bot.send_message(m.chat.id, f"Ты хочешь заменить название конфига\n{cfg['name'] if cfg['name'] else cfg['code_name']}\nна\n{m.text}", reply_markup=keyboard)
+                del(conf_changes[u['id']])
+                await bot.send_message(chat_id=m.chat.id,
+                                       text=f"Ты хочешь заменить название конфига\n"
+                                       f"{cfg['name'] if cfg['name'] else cfg['code_name']}\n"
+                                       f"на\n"
+                                       f"{m.text}",
+                                       reply_markup=keyboard)
             else:
                 await bot.send_message(m.chat.id, "Слишком длинное название")
-        elif conf_changes[m.from_user.id].split("_")[0] == "desc":
+        elif conf_changes[u['id']].split("_")[0] == "desc":
             config_desc = m.text
             if len(m.text) <= 255:
-                cfg = await db.fetchone("SELECT description FROM configs WHERE user_id=(SELECT id FROM users WHERE tg_user_id=%s)", (m.from_user.id))
+                cfg_id = conf_changes[u['id']].split("_")[1]
+                cfg = await db.fetchone("SELECT description FROM configs WHERE id=%s", (cfg_id))
                 keyboard = types.InlineKeyboardMarkup(row_width=2)
                 buttons = [
-                    types.InlineKeyboardButton("Yes✅", callback_data=f"change_descript_{conf_changes[m.from_user.id].split("_")[-1]}_{m.text}"),
+                    types.InlineKeyboardButton("Yes✅", callback_data=f"change_descript_{cfg_id}_{m.text}"),
                     types.InlineKeyboardButton("No❌", callback_data="delete_mess")
                 ]
                 keyboard.add(*buttons)
                 del(conf_changes[m.from_user.id])
                 if cfg['description']:
-                    await bot.send_message(m.chat.id, f"Ты хочешь заменить описание конфига\n{cfg['hint']}\nна\n{m.text}", reply_markup=keyboard)
+                    await bot.send_message(chat_id=m.chat.id,
+                                           text=f"Ты хочешь заменить описание конфига\n"
+                                           f"{cfg['description']}\n"
+                                           f"на\n"
+                                           f"{m.text}",
+                                           reply_markup=keyboard)
                 else:
                     await bot.send_message(m.chat.id, f"Ты хочешь поставить описание конфига\n{m.text}", reply_markup=keyboard)
             else:
@@ -289,7 +302,7 @@ async def pre_checkout(q):
             await bot.answer_pre_checkout_query(q.id, ok=True)
             u = await db.fetchone ("SELECT id FROM users WHERE tg_user_id=%s", (q.from_user.id))
             await db.execute('INSERT INTO payments (user_id, config_id, amount, currency) VALUES (%s, %s, %s, %s)', (u['id'], q.invoice_payload.split("_")[-1], q.total_amount, q.currency))
-        elif q.invoice_payload.startswith("config_contin"):
+        elif q.invoice_payload.startswith("config_coontin"):
             await bot.answer_pre_checkout_query(q.id, ok=True)
             pay_operations[q.invoice_payload] = await db.execute('INSERT INTO payments (user_id, config_id, amount, currency, description) VALUES (%s, %s, %s, %s, %s)', (u['id'], q.invoice_payload.split("_")[-1], q.total_amount, q.currency, q.invoice_payload))
         elif q.invoice_payload.startswith("balance"):
@@ -323,11 +336,10 @@ async def successful_payment(m):
                                                 "Android: <a href='https://play.google.com/store/apps/details?id=org.amnezia.vpn&pcampaignid=web_share'>AmneziaVPN</a> <a href='https://play.google.com/store/apps/details?id=org.amnezia.awg&pcampaignid=web_share'>AmneziaWG</a>\n"
                                                 "Apple: <a href='https://apps.apple.com/us/app/amneziavpn/id1600529900'>AmneziaVPN</a> <a href='https://apps.apple.com/us/app/amneziawg/id6478942365'>AmneziaWG</a>\n"
                                                 "Windows: <a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN</a>"))
-        with open(CONF_DIR+str(cfg_name)+".png", "rb") as qr:
+        with open(os.path.join(CONF_DIR,str(cfg_name)+".png"), "rb") as qr:
             await bot.send_photo(m.chat.id, qr)
-        with open(CONF_DIR+str(cfg_name)+".conf", "rb") as file:
+        with open(os.path.join(CONF_DIR,str(cfg_name)+".conf"), "rb") as file:
             await bot.send_document(m.chat.id, document=types.InputFile(file, file_name="".join(cfg_name.split("_")[1:])+".conf"))
-            
     elif payment.invoice_payload.startswith("balance"):
         summ = payment.invoice_payload.split("_")[-2]
         del(pay_operations[payment.invoice_payload])
@@ -335,14 +347,11 @@ async def successful_payment(m):
                         ('paid', json.dumps(m.json, ensure_ascii=False), payment.provider_payment_charge_id, payment.telegram_payment_charge_id, payment.invoice_payload.split("_")[-1]))
         await db.execute(f"UPDATE users SET balance = balance + {summ} WHERE tg_user_id={m.from_user.id}")
         await bot.send_message(m.chat.id, f"Баланс успешно пополнен на {summ}руб.")
-        
     elif payment.invoice_payload.startswith("config_contin"):
         del(pay_operations[payment.invoice_payload])
         data = payment.invoice_payload.split("_")[-2:]
-        amount, unit = await to_msql(data[0])
-        cfg_id = int(data[1])
-        await db.execute("UPDATE configs SET valid_until=TIMESTAMPADD("+unit+", %s, valid_until) WHERE id=%s", (amount, cfg_id))
-        cfg = await db.fetchone("SELECT code_name, name FROM configs WHERE id=%s", (cfg_id))
+        await db.execute("UPDATE configs SET valid_until = valid_until + %s WHERE id = %s", (to_msql(data[-1]) ,data[0]))
+        cfg = await db.fetchone("SELECT code_name, name FROM configs WHERE id=%s", (data[0]))
         await bot.send_message(m.chat.id, text=(f"Конфиг {cfg["name"] if cfg["name"] else cfg["code_name"]} был успешно продлен"))
         
         
@@ -350,25 +359,38 @@ async def successful_payment(m):
 
 
 
-@bot.callback_query_handler(func = lambda c: any(c.data.startswith(i) for i in ["soon", "menu", "contin_config", "buy_contin_config", "config_loc_choose", "buy_config", "config_settings", "configs_name", "configs_descript", "delete_mess", "change_name", "change_descript", "show_config", "baldeposit"]))
+@bot.callback_query_handler(func = lambda c: any(c.data.startswith(i) for i in ["soon", "menu", "config", "contin_config", "buy", "delete_mess", "change", "show", "baldeposit"]))
 async def  callback_query(c):
     u = await db.fetchone("SELECT id, admin_lvl, locale FROM users WHERE tg_user_id=%s", (c.from_user.id))
     if not u:
         return await bot.answer_callback_query(c.id, "Write first /start")
     if c.data.startswith("soon"):
-        return await bot.answer_callback_query(c.id, "Function isn't work now, maybe soon...", show_alert=True)
+        return await bot.answer_callback_query(c.id, "Function isn't work now, maybe i will do it soon...", show_alert=True)
     elif c.data.startswith("menu_config"):
         rows = await db.fetchall("SELECT id, name, code_name FROM configs WHERE user_id=%s and status='active'",
                                  (u['id']))
         if not(rows):
             return await bot.edit_message_text(text="У тебя нет конфигов в данный момент", chat_id=c.message.chat.id, message_id=c.message.id)
         buttons = [
-            types.InlineKeyboardButton(text=(i["name"] if i["name"] else i["code_name"]), callback_data=f"show_config_{i['id']}")
+            types.InlineKeyboardButton(text=(i["name"] if i["name"] else i["code_name"]), callback_data=f"config_menu_{i['id']}")
             for i in rows
         ]
         keyboard=types.InlineKeyboardMarkup(row_width=1)
         keyboard.add(*buttons)
         await bot.edit_message_text(text="Выбери конфиг", chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
+        await bot.answer_callback_query(c.id, "")
+    elif c.data.startswith("config_menu"):
+        cfg_id = c.data.split("_")[-1]
+        cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id=%s", (cfg_id))
+        buttons = [
+            types.InlineKeyboardButton(text="Отобразить qr код", callback_data=f"show_config_qr_{cfg_id}"),
+            types.InlineKeyboardButton(text="Получить файл конфигурации", callback_data=f"show_config_conf_{cfg_id}"),
+            types.InlineKeyboardButton(text="Изменить конфиг", callback_data=f"config_settings_{cfg_id}")
+        ]
+        keyboard=types.InlineKeyboardMarkup(row_width=1)
+        keyboard.add(*buttons)
+        
+        await bot.edit_message_text(text="вот твой конфиг", chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
     elif c.data.startswith("menu_newconfig"):
         locations = await db.fetchall("SELECT id, name FROM locations WHERE is_active = 1")
         keyboard = types.InlineKeyboardMarkup(row_width=2)
@@ -438,45 +460,80 @@ async def  callback_query(c):
                                       need_email=True,
                                       send_email_to_provider=True)
         return await bot.answer_callback_query(c.id, "")
-    elif c.data.startswith("show_config"):
-        data = c.data.split("_")[-1]
-        cfg = await db.fetchone("SELECT name, code_name,location_id, valid_until FROM configs where id = %s",(data))
-        with open(CONF_DIR+cfg['code_name']+".png", "rb") as qr:
-                await bot.send_photo(c.message.chat.id, qr)
+    elif c.data.startswith("show_config_conf"):
+        await bot.delete_message(c.message.chat.id, c.message.id)
+        cfg_id = c.data.split("_")[-1]
+        cfg = await db.fetchone("SELECT name, code_name,location_id, valid_until FROM configs WHERE id = %s",
+                                (cfg_id))
+        name = "".join((cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:]))
         with open(os.path.join(CONF_DIR, cfg['code_name']+".conf"), 'rb') as file:
             location = (await db.fetchall("SELECT name FROM locations WHERE id = %s", (cfg['location_id'])))[0]
-            await bot.send_document(c.message.chat.id, types.InputFile(file, file_name="".join(cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:])+".conf"), caption=f"{location['name']}, действителен до: {cfg['valid_until']}(GMT+3)")
+            await bot.send_document(chat_id=c.message.chat.id,
+                                    document=types.InputFile(file, file_name=name+".conf"),
+                                    caption=f"Действителен до: {cfg['valid_until']}(GMT+3)")
+        await bot.answer_callback_query(c.id, "")
+    elif c.data.startswith("show_config_qr"):
+        await bot.delete_message(c.message.chat.id, c.message.id)
+        cfg_id = c.data.split("_")[-1]
+        cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id = %s", (cfg_id))
+        name = "".join((cfg['name'] if cfg['name'] else cfg['code_name']).split("_")[1:])
+        with open(os.path.join(CONF_DIR, cfg['code_name']+".png"), "rb") as qr:
+                await bot.send_photo(chat_id=c.message.chat.id, photo=qr, caption=name)
         await bot.answer_callback_query(c.id, "")
     elif c.data.startswith("config_settings"):
-        conf_changes[c.from_user.id]=c.data.split("_")[-1]
+        cfg_id=c.data.split("_")[-1]
+        conf_changes[c.from_user.id]=cfg_id
         buttons = [
-            types.InlineKeyboardButton(text="Название", callback_data=f"configs_name_{conf_changes[c.from_user.id]}"),
-            types.InlineKeyboardButton(text="Описание", callback_data=f"configs_descript_{conf_changes[c.from_user.id]}")
+            types.InlineKeyboardButton(text="Название", callback_data=f"config_name_{cfg_id}"),
+            types.InlineKeyboardButton(text="Описание", callback_data=f"config_descript_{cfg_id}")
             ]
         keyboard = types.InlineKeyboardMarkup(row_width=1)
         keyboard.add(*buttons)
         return await bot.edit_message_text("Что ты хочешь изменить?", c.message.chat.id, c.message.id, reply_markup=keyboard)
-    elif c.data.startswith("configs_name"):
-        conf_changes[c.from_user.id]=f"name_{c.data.split('_')[-1]}"
-        await bot.edit_message_text("Напиши название, которое хочешь поставить\nДля отмены введи любую команду", c.message.chat.id, c.message.id)
-    elif c.data.startswith("configs_descript"):
-        conf_changes[c.from_user.id]=f"desc_{c.data.split('_')[-1]}"
-        await bot.edit_message_text("Напиши описание, которое хочешь поставить\nДля отмены введи любую команду", c.message.chat.id, c.message.id)
-    elif c.data.startswith("delete_mess"):
-        return await bot.delete_message(c.message.chat.id, c.message.id)
+    elif c.data.startswith("config_name"):
+        cfg_id=c.data.split('_')[-1]
+        conf_changes[u['id']]=f"name_{cfg_id}"
+        cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id=%s", (cfg_id))
+        name = "".join((cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:]))
+        await bot.edit_message_text(text=f"Напиши название, которое хочешь поставить конфигу {name}\n"
+                                    "Для отмены введи любую команду",
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id)
+    elif c.data.startswith("config_descript"):
+        cfg_id=c.data.split('_')[-1]
+        conf_changes[c.from_user.id]=f"desc_{cfg_id}"
+        cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id=%s", (cfg_id))
+        name = "".join((cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:]))
+        await bot.edit_message_text(text=f"Напиши описание, которое хочешь поставить конфигу {name}\n"
+                                    "Для отмены введи любую команду",
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id)
     elif c.data.startswith("change_name"):
-        cfg_id = c.data.split("_")[1]
-        text = "_".join(c.data.split("_")[2:])
+        cfg_id = c.data.split("_")[2]
+        text = "_".join(c.data.split("_")[3:])
+        cfg = await db.fetchone("SELECT code_name FROM configs WHERE id=%s", (cfg_id))
         await db.execute("UPDATE configs SET name = %s WHERE id = %s", (text, cfg_id))
-        await bot.edit_message_text("Название успешно изменено", c.message.chat.id, c.message.id)
+        await bot.edit_message_text(text=f"Название конфига\n"
+                                    f"{cfg['code_name']}\n"
+                                    f"успешно изменено на\n"
+                                    f"{text}",
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id)
     elif c.data.startswith("change_descript"):
-        cfg_id = c.data.split("_")[1]
-        text = "_".join(c.data.split("_")[2:])
+        cfg_id = c.data.split("_")[2]
+        text = "_".join(c.data.split("_")[3:])
+        await db.fetchone("SELECT code_name, name FROM configs WHERE id=%s",(cfg_id))
         await db.execute("UPDATE configs SET description = %s WHERE id = %s", (text, cfg_id))
-        await bot.edit_message_text("Название успешно изменено", c.message.chat.id, c.message.id)
+        await bot.edit_message_text(text=f"Описание конфига\n"
+                                    f"успешно изменено на\n"
+                                    f"{text}",
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id)
     elif c.data.startswith("baldeposit"):
         balance_depos.append(c.from_user.id)
         await bot.edit_message_text("Напиши сумму пополнения(руб.):", c.message.chat.id, c.message.id)
+    elif c.data.startswith("delete_mess"):
+        return await bot.delete_message(c.message.chat.id, c.message.id)
 
 
 
@@ -494,13 +551,13 @@ async def to_td(s: str) -> td:
 async def to_msql(s: str) -> str:
     s = s.strip().lower()
     if s.endswith("min"):
-        return f"{s[:-3]}", "MINUTE"
+        return f"{s[:-3]} MINUTE"
     elif s.endswith("h"):
-        return f"{s[:-1]}", "HOUR"
+        return f"{s[:-1]} HOUR"
     elif s.endswith("d"):
-        return f"{s[:-1]}", "DAY"
+        return f"{s[:-1]} DAY"
     else:
-        return f"1", "MONTH"
+        return f"1 MONTH"
       
 
 
