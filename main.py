@@ -8,6 +8,7 @@ import db
 from datetime import datetime as dt
 from datetime import timedelta as td
 import json
+import secrets
 
 #time.sleep(10)
 
@@ -18,10 +19,12 @@ load_dotenv()
 TOKEN = os.getenv('TOKEN')
 PROVIDER_TOKEN = os.getenv('PROVIDER_TOKEN').strip()
 CONF_DIR = os.getenv('CONF_DIR', './configs')
+REFERAL_ALPHABET = os.getenv('REFERAL_SYMBOLS').strip()
 cfg_tariff = {"9min":7000, "59min":10000, "11h":12000, "23h":15000, "2d":20000, "7d":25000, "till end beta":66666}
 pay_operations = dict()
 conf_changes=dict()
 balance_depos=[]
+referals = []
 
 
 # Initialize bot
@@ -34,21 +37,23 @@ async def send_welcome(m):
     u = await db.fetchone("SELECT id, locale FROM users WHERE tg_user_id=%s",
                           (m.from_user.id,))
     if not u:
+        code = "".join(secrets.choice(REFERAL_ALPHABET) for _ in range(16))
+        while await db.fetchone("SELECT id FROM users WHERE referal_code=%s", (code)):
+            code = "".join(secrets.choice(REFERAL_ALPHABET) for _ in range(16))
         uid = await db.execute(
-            "INSERT INTO users (tg_user_id, username, first_name, last_name) VALUES (%s, %s, %s, %s)",
-            (m.from_user.id, m.from_user.username, m.from_user.first_name, m.from_user.last_name)
+            "INSERT INTO users (tg_user_id, username, first_name, last_name, referal_code) VALUES (%s, %s, %s, %s, %s)",
+            (m.from_user.id, m.from_user.username, m.from_user.first_name, m.from_user.last_name, code)
         )
         return await bot.send_message(m.chat.id, "Welcome! Use /help to see available commands.")
-    elif u['locale'] == "en":
-        await db.execute(
-            "UPDATE users SET username=%s, first_name=%s, last_name=%s WHERE tg_user_id=%s",
-            (m.from_user.username, m.from_user.first_name, m.from_user.last_name, m.from_user.id))
-        await bot.send_message(m.chat.id, "Use /help to see available commands.")
     else:
         await db.execute(
             "UPDATE users SET username=%s, first_name=%s, last_name=%s WHERE tg_user_id=%s",
             (m.from_user.username, m.from_user.first_name, m.from_user.last_name, m.from_user.id))
-        await bot.send_message(m.chat.id, "Напиши /help чтобы увидеть список доступных команд")
+        
+        if u['locale'] == "en":
+            await bot.send_message(m.chat.id, "Use /help to see available commands.")
+        else:
+            await bot.send_message(m.chat.id, "Напиши /help чтобы увидеть список доступных команд")
     await clear(m.from_user.id)
 
 
@@ -196,7 +201,7 @@ async def balance(m):
 async def description(m):
     u = await db.fetchone("SELECT id, locale, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id))
     if not u:
-        return await bot.send_message(m, "Write frist /start")
+        return await bot.send_message(m.chat.id, "Write frist /start")
     else:
         rows = await db.fetchall("SELECT id, name, code_name, location_id, valid_until FROM configs WHERE user_id=%s and status='active'", (u['id']))
         buttons = [
@@ -220,17 +225,51 @@ async def operat(m):
 
 
 
+@bot.message_handler(commands = ['ref', 'referal'])
+async def referal(m):
+    u = await db.fetchone("SELECT id, locale, referal FROM users WHERE tg_user_id=%s", (m.from_user.id,))
+    if not u:
+        return await bot.reply_to(m, "Write first /start")
+    else:
+        try:
+            code = m.text.split()[1]
+            user = await db.fetchone("SELECT first_name, id FROM users WHERE referal_code=%s", (code))
+            if user['id'] and not u['referal']:
+                await db.execute("UPDATE users SET referal=%s WHERE id=%s", (code, u['id']))
+                if u['locale'] == "en":
+                    await bot.send_message(chat_id=m.chat.id,
+                                           text=f"You became referal of {user['first_name']}")
+                else:
+                    await bot.send_message(chat_id=m.chat.id,
+                                           text=f"Вы стали рефералом {user['first_name']}")
+            else:
+                if u['locale'] == "en":
+                    await bot.send_message(chat_id=m.chat.id,
+                                           text="There is no such code.")
+                else:
+                    await bot.send_message(chat_id=m.chat.id,
+                                           text=f"Такого кода не существует")
+        except:
+            referals.append(u['id'])
+            if u['locale'] == "en":
+                await bot.send_message(chat_id=m.chat.id,
+                                       text="Input referal code")
+            else:
+                await bot.send_message(chat_id=m.chat.id,
+                                       text="Введи реферальный код")
+
+
 @bot.message_handler(chat_types=['private'], content_types=['text'])
 async def message_hand(m):
     u = await db.fetchone("SELECT id, locale, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id))
     if not u:
-        return await bot.send_message(m, "Write frist /start")
+        return await bot.send_message(m.chat.id, "Write frist /start")
     elif u['id'] in conf_changes.keys():
         if conf_changes[u['id']].split("_")[0] == "name":
             config_name = m.text
             if len(m.text) <= 32:
                 cfg_id = conf_changes[u['id']].split("_")[1]
-                cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id=%s)", (cfg_id))
+                cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id=%s", (cfg_id))
                 keyboard = types.InlineKeyboardMarkup(row_width=2)
                 buttons = [
                     types.InlineKeyboardButton("Ok✅", callback_data=f"change_name_{cfg_id}_{m.text}"),
@@ -291,6 +330,26 @@ async def message_hand(m):
                                photo_url="http://kirian.su/test/Money.png",
                                need_email=True,
                                send_email_to_provider=True)
+    
+    elif u['id'] in referals:
+        code = m.text.strip().split()[0]
+        user = await db.fetchone('SELECT id, first_name FROM users WHERE referal_code=%s',(code))
+        if user['id']:
+            await db.execute("UPDATE users SET referal=%s WHERE id=%s", (code, u['id']))
+            if u['locale'] == "en":
+                await bot.send_message(chat_id=m.chat.id,
+                                       text=f"You became referal of {user['first_name']}")
+            else:
+                await bot.send_message(chat_id=m.chat.id,
+                                       text=f"Вы стали рефералом {user['first_name']}")
+        else:
+            if u['locale'] == 'en':
+                await bot.send_message(chat_id=m.chat.id,
+                                       text="There is no such code.")
+            else:
+                await bot.send_message(chat_id=m.chat.id,
+                                       text="Такого кода не существует")
+            
 
 
 @bot.pre_checkout_query_handler(func=lambda query: True)
@@ -383,16 +442,22 @@ async def  callback_query(c):
         await bot.answer_callback_query(c.id, "")
     elif c.data.startswith("config_menu"):
         cfg_id = c.data.split("_")[-1]
-        cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id=%s", (cfg_id))
+        cfg = await db.fetchone("SELECT name, code_name, valid_until, description FROM configs WHERE id=%s", (cfg_id))
         buttons = [
             types.InlineKeyboardButton(text="Отобразить qr код", callback_data=f"show_config_qr_{cfg_id}"),
             types.InlineKeyboardButton(text="Получить файл конфигурации", callback_data=f"show_config_conf_{cfg_id}"),
+            types.InlineKeyboardButton(text="Продлить конфиг", callback_data=f"contin_config_{cfg_id}"),
             types.InlineKeyboardButton(text="Изменить конфиг", callback_data=f"config_settings_{cfg_id}")
         ]
         keyboard=types.InlineKeyboardMarkup(row_width=1)
         keyboard.add(*buttons)
-        
-        await bot.edit_message_text(text="вот твой конфиг", chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
+        name = "".join((cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:]))
+        await bot.edit_message_text(text=f"Название: {name}\n"
+                                    f"Действителен до: {cfg['valid_until']}\n"
+                                    f"Описание: {cfg['description']}",
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id,
+                                    reply_markup=keyboard)
     elif c.data.startswith("menu_newconfig"):
         locations = await db.fetchall("SELECT id, name FROM locations WHERE is_active = 1")
         keyboard = types.InlineKeyboardMarkup(row_width=2)
@@ -467,7 +532,7 @@ async def  callback_query(c):
         cfg_id = c.data.split("_")[-1]
         cfg = await db.fetchone("SELECT name, code_name,location_id, valid_until FROM configs WHERE id = %s",
                                 (cfg_id))
-        name = "".join((cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:]))
+        name = "".join(cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:])
         with open(os.path.join(CONF_DIR, cfg['code_name']+".conf"), 'rb') as file:
             location = (await db.fetchall("SELECT name FROM locations WHERE id = %s", (cfg['location_id'])))[0]
             await bot.send_document(chat_id=c.message.chat.id,
@@ -573,8 +638,6 @@ async def clear(u_id):
 
 #daily check configs 
 async def daily_check(x):
-    d = dt.now()
-    await asyncio.sleep(x - d.hour * 3600 - d.minute * 60 - d.second)
     while True:
         await db.execute("UPDATE configs SET status='expired' WHERE status='active' AND valid_until <= NOW()")
         ban = await db.fetchall(f"SELECT id, user_id, code_name FROM configs WHERE status ='expired' AND updated_at >= NOW() - INTERVAL {x} SECOND")
