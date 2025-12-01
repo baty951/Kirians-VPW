@@ -1,14 +1,14 @@
 from locale import currency
 from telebot.async_telebot import AsyncTeleBot
-import asyncio, os
+import asyncio, os, subprocess
 from telebot import types
-import subprocess
 from dotenv import load_dotenv
-import db
 from datetime import datetime as dt
 from datetime import timedelta as td
 import json
 import secrets
+import db
+from dataclasses import dataclass
 
 #time.sleep(10)
 
@@ -20,11 +20,12 @@ TOKEN = os.getenv('TOKEN')
 PROVIDER_TOKEN = os.getenv('PROVIDER_TOKEN').strip()
 CONF_DIR = os.getenv('CONF_DIR', './configs')
 REFERAL_ALPHABET = os.getenv('REFERAL_SYMBOLS').strip()
-cfg_tariff = {"9min":7000, "59min":10000, "11h":12000, "23h":15000, "2d":20000, "7d":25000, "till end beta":66666}
+cfg_tariff = {"9min":7000, "59min":10000, "11h":12000, "23h":15000, "2d":20000, "7d":25000, "1mo":66666}
 pay_operations = dict()
 conf_changes=dict()
 balance_depos=[]
 referals = []
+
 
 
 # Initialize bot
@@ -38,7 +39,7 @@ async def send_welcome(m):
                           (m.from_user.id,))
     if not u:
         code = "".join(secrets.choice(REFERAL_ALPHABET) for _ in range(16))
-        while (await db.fetchone("SELECT id FROM users WHERE referal_code=%s", (code)))['id']:
+        while (await db.fetchone("SELECT id FROM users WHERE referal_code=%s", (code,))):
             code = "".join(secrets.choice(REFERAL_ALPHABET) for _ in range(16))
         uid = await db.execute(
             "INSERT INTO users (tg_user_id, username, first_name, last_name, referal_code) VALUES (%s, %s, %s, %s, %s)",
@@ -49,7 +50,7 @@ async def send_welcome(m):
         await db.execute(
             "UPDATE users SET username=%s, first_name=%s, last_name=%s WHERE tg_user_id=%s",
             (m.from_user.username, m.from_user.first_name, m.from_user.last_name, m.from_user.id))
-        
+	        
         if u['locale'] == "en":
             text = "Use /help to see available commands."
         else:
@@ -376,7 +377,7 @@ async def successful_payment(m):
 
 
 
-@bot.callback_query_handler(func = lambda c: any(c.data.startswith(i) for i in ["soon", "menu", "config", "contin_config", "buy", "delete_mess", "change", "show", "baldeposit", "account", "referal"]))
+@bot.callback_query_handler(func = lambda c: any(c.data.startswith(i) for i in ["soon", "menu", "config", "contin_config", "buy", "delete_mess", "change", "show", "baldeposit", "account", "referal", "choose"]))
 async def  callback_query(c):
     u = await db.fetchone("SELECT id, admin_lvl, locale, balance, configs_count FROM users WHERE tg_user_id=%s", (c.from_user.id))
     if not u:
@@ -392,7 +393,7 @@ async def  callback_query(c):
                                                show_alert=True)
     elif c.data.startswith("menu_config"):
         rows = await db.fetchall("SELECT id, name, code_name FROM configs WHERE user_id=%s and status='active'",
-                                 (u['id']))
+                                 (u['id'],))
         if not(rows):
             if u['locale'] == "en":
                 text = "You don't have any configs"
@@ -402,7 +403,7 @@ async def  callback_query(c):
                                                chat_id=c.message.chat.id,
                                                message_id=c.message.id)
         buttons = [
-            types.InlineKeyboardButton(text=(i["name"] if i["name"] else i["code_name"].split("_")[1:]), callback_data=f"config_menu_{i['id']}")
+            types.InlineKeyboardButton(text=(i["name"] if i["name"] else "".join(i["code_name"].split("_")[1:])), callback_data=f"config_menu_{i['id']}")
             for i in rows
         ]
         keyboard=types.InlineKeyboardMarkup(row_width=1)
@@ -415,7 +416,7 @@ async def  callback_query(c):
                                     chat_id=c.message.chat.id,
                                     message_id=c.message.id,
                                     reply_markup=keyboard)
-        await bot.answer_callback_query(text="",
+        await bot.answer_callback_query(text=text,
                                         сallback_query_id=c.id)
     elif c.data.startswith("menu_main"):
         keyboard = types.InlineKeyboardMarkup(row_width = 2)
@@ -463,7 +464,7 @@ async def  callback_query(c):
         locations = await db.fetchall("SELECT id, name FROM locations WHERE is_active = 1")
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         buttons = [
-            types.InlineKeyboardButton(text=i['name'], callback_data=f"config_loc_choose{i['id']}")
+            types.InlineKeyboardButton(text=i['name'], callback_data=f"choose_loc{i['id']}")
             for i in locations
         ]
         if u['locale'] == "ru":
@@ -474,14 +475,31 @@ async def  callback_query(c):
             buttons.append(types.InlineKeyboardButton(text="Soon...", callback_data="soon"))
             keyboard.add(*buttons)
             return await bot.edit_message_text(text="Choose location", chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
-    elif c.data.startswith("config_loc_choose"):
+    elif c.data.startswith("choose_loc"):
         buttons = [
-            types.InlineKeyboardButton(text=x, callback_data=f"buy_config_{c.data.replace("config_loc_choose","")}_{x}") 
+            types.InlineKeyboardButton(text=x, callback_data=f"buy_config_{c.data.replace("choose_loc","")}_{x}") 
             for x in cfg_tariff.keys()
             ]
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         keyboard.add(*buttons)
-        return await bot.edit_message_text(text="Выбери тариф конфига", chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
+        return await bot.edit_message_text(text="Выбери тариф конфига",
+                                           chat_id=c.message.chat.id,
+                                           message_id=c.message.id,
+                                           reply_markup=keyboard)
+    elif c.data.startswith("choose_pay"):
+        buttons = [types.InlineKeyboardButton(text="ЮKassa", callback_data="")]
+        if u['locale'] == "en":
+            text = "Choose type of payments"
+            buttons.append(types.InlineKeyboardButton(text="bot balance", callback_data=""))
+        else:
+            text = "Выбери тип оплаты"
+            buttons.append(types.InlineKeyboardButton(text="Баланс бота", callback_data=""))
+        keyboard = types.InlineKeyboardMarkup(row_width = 2)
+        keyboard.add(*buttons)
+        await bot.edit_message_text(text=text,
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id,
+                                    reply_markup=keyboard)
     elif c.data.startswith("buy_config"):
         data = c.data.split("_")
         location = (await db.fetchone("SELECT name FROM locations WHERE id=%s",(int(data[-2]))))['name']
