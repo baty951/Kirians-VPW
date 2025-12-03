@@ -19,10 +19,17 @@ from translation import tr
 
 # Load configuration
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
-PROVIDER_TOKEN = os.getenv('PROVIDER_TOKEN').strip()
+
+def required_env(name: str) -> str:
+    val = os.getenv(name)
+    if not val:
+        raise RuntimeError(f"Missing required env var: {name}")
+    return val.strip()
+
+TOKEN = required_env('TOKEN')
+PROVIDER_TOKEN = required_env('PROVIDER_TOKEN')
 CONF_DIR = os.getenv('CONF_DIR', './configs')
-REFERAL_ALPHABET = os.getenv('REFERAL_SYMBOLS').strip()
+REFERAL_ALPHABET = required_env('REFERAL_SYMBOLS')
 cfg_tariff = {"9min":7000, "59min":10000, "11h":12000, "23h":15000, "2d":20000, "7d":25000, "1mo":66666}
 pay_operations = dict()
 conf_changes=dict()
@@ -321,7 +328,7 @@ async def successful_payment(m):
         await db.execute('UPDATE `users` SET configs_count=configs_count + 1 WHERE tg_user_id=%s', (m.from_user.id))
         await db.execute("UPDATE configs SET valid_until=%s, status='active' WHERE id = %s",
                         ((str(dt.now()+(await to_td(payment.invoice_payload.split("_")[-2]))).split("."))[0], cfg_id))
-        text = tr("CONFIG_HELP", u['locale'])
+        text = await tr("CONFIG_HELP", u['locale'])
         await bot.send_message(text=text,
                                chat_id=m.chat.id)
         with open(os.path.join(CONF_DIR,str(cfg_name)+".png"), "rb") as qr:
@@ -361,7 +368,7 @@ async def successful_payment(m):
 async def  callback_query(c):
     u = await db.fetchone("SELECT id, admin_lvl, locale, balance, configs_count FROM users WHERE tg_user_id=%s", (c.from_user.id))
     if not u:
-        return await bot.answer_callback_query(сallback_query_id=c.id,
+        return await bot.answer_callback_query(callback_query_id=c.id,
                                                text="Write first /start")
     if c.data.startswith("soon"):
         if u['locale'] == "en":
@@ -369,7 +376,7 @@ async def  callback_query(c):
         else:
             text = "Функция в данный момент не работает, возможно я сделаю её позже..."
         return await bot.answer_callback_query(text=text,
-                                               сallback_query_id=c.id,
+                                               callback_query_id=c.id,
                                                show_alert=True)
     
     #Input
@@ -753,16 +760,16 @@ async def to_td(s: str) -> td:
     else:
         return td(days=30)
 
-async def to_msql(s: str) -> str:
+async def to_msql(s: str) -> tuple[str, str]:
     s = s.strip().lower()
     if s.endswith("min"):
-        return f"{s[:-3]}", "MINUTE"
+        return s[:-3], "MINUTE"
     elif s.endswith("h"):
-        return f"{s[:-1]}", "HOUR"
+        return s[:-1], "HOUR"
     elif s.endswith("d"):
-        return f"{s[:-1]}", "DAY"
+        return s[:-1], "DAY"
     else:
-        return f"1", "MONTH"
+        return "1", "MONTH"
       
 
 
