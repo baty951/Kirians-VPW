@@ -79,7 +79,8 @@ async def menu(m):
         keyboard.row(BButton(text=await tr("My configs", u['locale']), callback_data="menu_config"))
         keyboard.row(BButton(text=await tr("Account", u['locale']), callback_data="account_menu"))
         keyboard.row(BButton(text=await tr("Information", u['locale']), callback_data="menu_information"))
-        keyboard.row(BButton(text=await tr("Buy config", u['locale']), callback_data="choose_location"))
+        keyboard.row(BButton(text=await tr("Buy config", u['locale']), callback_data="choose_location_buy"))
+        keyboard.row(BButton(text=await tr("Пополнить баланс", u['locale']), callback_data="baldeposit"))
         text = (await tr("MENU_MESS", u['locale'])).format(
             balance = u['balance'],
             count = u['configs_count']
@@ -364,7 +365,7 @@ async def successful_payment(m):
 
 
 
-@bot.callback_query_handler(func = lambda c: any(c.data.startswith(i) for i in ["soon", "menu", "config", "contin_config", "buy", "pay", "accept", "delete_mess", "change", "show", "baldeposit", "account", "referal", "choose"]))
+@bot.callback_query_handler(func = lambda c: any(c.data.startswith(i) for i in ["soon", "menu", "config", "extend", "buy", "pay", "accept", "delete_mess", "change", "show", "baldeposit", "account", "referal", "choose"]))
 async def  callback_query(c):
     u = await db.fetchone("SELECT id, admin_lvl, locale, balance, configs_count FROM users WHERE tg_user_id=%s", (c.from_user.id))
     if not u:
@@ -413,7 +414,8 @@ async def  callback_query(c):
         keyboard.row(BButton(text=await tr("My configs", u['locale']), callback_data="menu_config"))
         keyboard.row(BButton(text=await tr("Account", u['locale']), callback_data="account_menu"))
         keyboard.row(BButton(text=await tr("Information", u['locale']), callback_data="menu_information"))
-        keyboard.row(BButton(text=await tr("Buy config", u['locale']), callback_data="choose_location"))
+        keyboard.row(BButton(text=await tr("Buy config", u['locale']), callback_data="choose_location_buy"))
+        keyboard.row(BButton(text=await tr("Пополнить баланс", u['locale']), callback_data="baldeposit"))
         text = (await tr("MENU_MESS", u['locale'])).format(
             balance = u['balance'],
             count = u['configs_count']
@@ -431,7 +433,7 @@ async def  callback_query(c):
         buttons = [
             BButton(text="Отобразить qr код", callback_data=f"show_config_qr_{cfg_id}"),
             BButton(text="Получить файл конфигурации", callback_data=f"show_config_conf_{cfg_id}"),
-            BButton(text="Продлить конфиг", callback_data=f"contin_config_{cfg_id}"),
+            BButton(text="Продлить конфиг", callback_data=f"choose_tariff_extend_{cfg_id}"),
             BButton(text="Изменить конфиг", callback_data=f"config_settings_{cfg_id}")
         ]
         keyboard=BMarkup(row_width=1)
@@ -443,14 +445,15 @@ async def  callback_query(c):
                                     chat_id=c.message.chat.id,
                                     message_id=c.message.id,
                                     reply_markup=keyboard)
-    #Output show_config_qr_(config id) / show_config_conf_(config id) / contin_config_(config id) / config_settings_(config id)
+    #Output show_config_qr_(config id) / show_config_conf_(config id) / extend_config_(config id) / config_settings_(config id)
     
-    #Input choose_location
+    #Input choose_location_(type)
     elif c.data.startswith("choose_location"):
+        type = c.data.split("_")[-1]
         locations = await db.fetchall("SELECT id, name FROM locations WHERE is_active = 1")
         keyboard = BMarkup(row_width=2)
         buttons = [
-            BButton(text=i['name'], callback_data=f"choose_tariff_{i['id']}")
+            BButton(text=i['name'], callback_data=f"choose_tariff_{type}_{i['id']}")
             for i in locations
         ]
         if u['locale'] == "ru":
@@ -461,13 +464,13 @@ async def  callback_query(c):
             buttons.append(BButton(text="Soon...", callback_data="soon"))
             keyboard.add(*buttons)
             return await bot.edit_message_text(text="Choose location", chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
-    #Output choose_tariff_(location id)
+    #Output choose_tariff_(type)_(location id)
     
-    #Input _(location id)
+    #Input _(type)_(location id/config id)
     elif c.data.startswith("choose_tariff"):
-        loc_id = c.data.split("_")[2]
+        type, loc_id = c.data.split("_")[2:]
         buttons = [
-            BButton(text=x, callback_data=f"choose_pay_{loc_id}_{x}") 
+            BButton(text=x, callback_data=f"choose_pay_{type}_{loc_id}_{x}") 
             for x in cfg_tariff.keys()
             ]
         keyboard = BMarkup(row_width=2)
@@ -479,11 +482,17 @@ async def  callback_query(c):
                                            reply_markup=keyboard)
     #Output _(location id)_(tariff key)
     
-    #Input _(location id)_(tariff key)
+    #Input _(type)_(location id)_(tariff key)
     elif c.data.startswith("choose_pay"):
-        loc_id, tariff_k = c.data.split("_")[2:]
-        buttons = [BButton(text="ЮKassa", callback_data=f"buy_config_{loc_id}_{tariff_k}")]
-        buttons.append(BButton(text="Баланс бота(-5%)", callback_data=f"pay_config_{loc_id}_{tariff_k}"))
+        type, loc_id, tariff_k = c.data.split("_")[2:]
+        if type == "buy":
+            buttons = [BButton(text="ЮKassa", callback_data=f"buy_config_{loc_id}_{tariff_k}"),
+                       BButton(text="Баланс бота(-5%)", callback_data=f"pay_config_{loc_id}_{tariff_k}")
+            ]
+        elif type == "extend":
+            buttons = [BButton(text="ЮKassa", callback_data=f"buy_extend_config_{loc_id}_{tariff_k}"),
+                       BButton(text="Баланс бота(-5%)", callback_data=f"pay_extend_config_{loc_id}_{tariff_k}")
+            ]
         keyboard = BMarkup(row_width = 2)
         keyboard.add(*buttons)
         text = f"Сумма оплаты: {int(str(cfg_tariff[tariff_k])[:-2])}руб\nВаш баланс: {u['balance']}руб"
@@ -524,7 +533,7 @@ async def  callback_query(c):
             text = await tr(f"Сумма к оплате: {summ}\n\nВаш баланс: {u['balance']}", u['locale'])
             keyboard = BMarkup(row_width=2)
             buttons = [
-                BButton(text = await tr("Оплатить", u['locale']), callback_data=f"accept_buy_{loc_id}_{summ}_{tariff_k}"),
+                BButton(text = await tr("Оплатить", u['locale']), callback_data=f"accept_pay_config_{loc_id}_{summ}_{tariff_k}"),
                 BButton(text = await tr("Отмена", u['locale']), callback_data=f"delete_mess")
             ]
             keyboard.add(*buttons)
@@ -532,11 +541,11 @@ async def  callback_query(c):
                                     chat_id=c.message.chat.id,
                                     message_id=c.message.id,
                                     reply_markup=keyboard)
-    #Output accept_buy_(location id)_(summ) / delete_mess
+    #Output accept_pay_config_(location id)_(summ) / delete_mess
     
     #Input _(location id)_(summ)_(tariff key)
-    elif c.data.startswith("accept_buy"):
-        loc_id, summ, tariff_k = c.data.split("_")[2:]
+    elif c.data.startswith("accept_pay_config"):
+        loc_id, summ, tariff_k = c.data.split("_")[3:]
         if u['balance'] >= (summ := int(summ)):
             await db.execute("UPDATE users SET balance = %s WHERE id = %s",
                              (u['balance'] - summ, u['id']))
@@ -565,19 +574,20 @@ async def  callback_query(c):
         
     
     #Input _(config id)
-    elif c.data.startswith("contin_config"):
+    elif c.data.startswith("extend_config"):
         cfg_id = c.data.split("_")[-1]
         buttons = [
-            BButton(text=x, callback_data=f"buy_contin_config_{cfg_id}_{x}") 
+            BButton(text=x, callback_data=f"buy_extend_config_{cfg_id}_{x}") 
             for x in cfg_tariff.keys()
         ]
         keyboard = BMarkup(row_width=2)
         keyboard.add(*buttons)
         return await bot.edit_message_text(text="Выбери тариф конфига", chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
-    #Output buy_contin_config_(config id)_(tariff key)
+    #Output buy_extend_config_(config id)_(tariff key)
     
-    #Input buy_contin_config_(config id)_(tariff key)
-    elif c.data.startswith("buy_contin_config"):
+    #Input buy_extend_config_(config id)_(tariff key)
+    elif c.data.startswith("buy_extend_config"):
+        cfg_id, tariff_k = c.data.split("_")[3:]
         data = c.data.replace("buy_contin_config_", "").split("_")
         await bot.delete_message(c.message.chat.id, c.message.id)
         payload = f"config_contin_{str(str(dt.now()).split(":")[1])}_{data[-1]}_{data[-2]}"
@@ -594,6 +604,45 @@ async def  callback_query(c):
                                       need_email=True,
                                       send_email_to_provider=True)
     #Output Message(invoice), pay_operations[config_contin_(time)_(tariff key)_(config id)] := ""
+    
+    #Input pay_extend_config_(config id)_(tariff key)
+    elif c.data.startswith("pay_extend_config"):
+        cfg_id, tariff_k = c.data.split("_")[3:]
+        summ = int(str(cfg_tariff[tariff_k])[:-2])
+        summ = int(summ/100*95)
+        if u['balance'] >= summ:
+            text = await tr(f"Сумма к оплате: {summ}\n\nВаш баланс: {u['balance']}", u['locale'])
+            keyboard = BMarkup(row_width=2)
+            buttons = [
+                BButton(text = await tr("Оплатить", u['locale']), callback_data=f"accept_pay_extend_{cfg_id}_{summ}_{tariff_k}"),
+                BButton(text = await tr("Отмена", u['locale']), callback_data=f"delete_mess")
+            ]
+            keyboard.add(*buttons)
+        await bot.edit_message_text(text = text,
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id,
+                                    reply_markup=keyboard)
+    #Output accept_pay_extend_(config id)_(summ)_(tariff key) / delete_mess
+    
+    #Input _(config id)_(summ)_(tariff key)
+    elif c.data.startswith("accept_pay_extend"):
+        await bot.delete_message(c.message.chat.id, c.message.id)
+        cfg_id, summ, tariff_k = c.data.split("_")[3:]
+        if u['balance'] >= (summ := int(summ)):
+            amount, unit = await to_msql(tariff_k)
+            await db.execute("UPDATE users SET balance = %s WHERE id = %s",
+                             (u['balance'] - summ, u['id']))
+            await db.execute("UPDATE configs SET valid_until=TIMESTAMPADD("+unit+", %s, valid_until) WHERE id=%s", (amount, cfg_id))
+            cfg = await db.fetchone("SELECT code_name, name FROM configs WHERE id=%s", (cfg_id))
+            name = cfg["name"] if cfg["name"] else "".join(cfg["code_name"].split("_")[1:])
+            text = await tr("CONFIG_EXTEND_SUCCESS", u['locale'])
+            if u['locale'] == "en":
+                text = f"Config {name} was succsessfully extended"
+            else:
+                text = f"Конфиг {name} был успешно продлен"
+            await bot.send_message(text=text,
+                                   chat_id=c.message.chat.id)
+    
     
     #Input _(config id)
     elif c.data.startswith("show_config_conf"):
@@ -686,8 +735,23 @@ async def  callback_query(c):
     #Input
     elif c.data.startswith("baldeposit"):
         balance_depos.append(u['id'])
-        await bot.edit_message_text("Напиши сумму пополнения в рублях(от 80 руб.):", c.message.chat.id, c.message.id)
-    #Output Message, balance_depos.append(u[id])
+        keyboard = BMarkup()
+        keyboard.row(BButton(text="Отмена", callback_data="cancel_deposit"))
+        await bot.edit_message_text(text="Напиши сумму пополнения в рублях(от 80 руб.):",
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id,
+                                    reply_markup=keyboard)
+    #Output Message, balance_depos.append(u[id]) / cancel_deposit
+    
+    #Input
+    elif c.data.startswith("cancel_deposit"):
+        balance_depos.remove(u['id'])
+        keyboard = BMarkup()
+        keyboard.row(BButton(text="Назад", callback_data="menu_main"))
+        await bot.edit_message_text("Пополнение отменено",
+                                    chat_id=c.message.chat.id,
+                                    message_id=c.message.id)
+    #Output remove u[id] from balance_depos
     
     #Input
     elif c.data.startswith("account_menu"):
