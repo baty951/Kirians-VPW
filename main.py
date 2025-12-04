@@ -45,7 +45,7 @@ bot = AsyncTeleBot(TOKEN, parse_mode='HTML')
 # Command Handlers
 @bot.message_handler(commands=['start','s'])
 async def send_welcome(m):
-    u = await db.fetchone("SELECT id, locale FROM users WHERE tg_user_id=%s",
+    u = await db.fetchone("SELECT id, referal, locale FROM users WHERE tg_user_id=%s",
                           (m.from_user.id,))
     if not u:
         code = "".join(secrets.choice(REFERAL_ALPHABET) for _ in range(16))
@@ -55,7 +55,16 @@ async def send_welcome(m):
             "INSERT INTO users (tg_user_id, username, first_name, last_name, referal_code) VALUES (%s, %s, %s, %s, %s)",
             (m.from_user.id, m.from_user.username, m.from_user.first_name, m.from_user.last_name, code)
         )
-        return await bot.send_message(m.chat.id, "Welcome! Use /help to see available commands.")
+        mess = m.text.split(maxsplit=1)
+        ref = mess[1] if len(mess) > 1 else None
+        await bot.send_message(m.chat.id, "Welcome! Use /help to see available commands.")
+        if ref:
+            user = await db.fetchone("SELECT first_name, id FROM users WHERE referal_code=%s", (ref))
+            if user['id']:
+                await db.execute("UPDATE users SET referal=%s WHERE id=%s", (ref, uid))
+                text = f"You became referal of {user['first_name']}"
+                await bot.send_message(text=text,
+                                       chat_id=m.chat.id)
     else:
         await db.execute(
             "UPDATE users SET username=%s, first_name=%s, last_name=%s WHERE tg_user_id=%s",
@@ -176,6 +185,24 @@ async def referal(m):
             await bot.send_message(text=text,
                                    chat_id=m.chat.id)
 
+
+
+@bot.message_handler(commands = ['sendall'])
+async def sendall(m):
+    u = await db.fetchone("SELECT id, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id,))
+    if not u or u['admin_lvl'] < 1:
+        return await bot.send_message(m.chat.id, "This command not for you")
+    else:
+        text = m.text.replace("/sendall ", "")
+        rows = await db.fetchall("SELECT tg_user_id FROM users")
+        for row in rows:
+            try:
+                await bot.send_message(chat_id=row['tg_user_id'], text=text)
+                await asyncio.sleep(0.1)
+            except:
+                pass
+
+          
 
 @bot.message_handler(chat_types=['private'], content_types=['text'])
 async def message_hand(m):
@@ -571,8 +598,7 @@ async def  callback_query(c):
                 await bot.send_document(chat_id = c.message.chat.id,
                                         document=types.InputFile(file, file_name="".join(cfg_name.split("_")[1:])+".conf"))
     #Output Message(config_help, qr code, document)
-        
-    
+
     #Input _(config id)
     elif c.data.startswith("extend_config"):
         cfg_id = c.data.split("_")[-1]
@@ -642,7 +668,6 @@ async def  callback_query(c):
                 text = f"Конфиг {name} был успешно продлен"
             await bot.send_message(text=text,
                                    chat_id=c.message.chat.id)
-    
     
     #Input _(config id)
     elif c.data.startswith("show_config_conf"):
@@ -788,7 +813,8 @@ async def  callback_query(c):
     elif c.data.startswith("referal_get"):
         code = (await db.fetchone("SELECT referal_code FROM users WHERE id = %s", (u['id'],)))['referal_code']
         keyboard=BMarkup()
-        keyboard.row(BButton(text="Скопировать", copy_text=types.CopyTextButton(text=code)))
+        keyboard.row(BButton(text="Скопировать код", copy_text=types.CopyTextButton(text=code)))
+        keyboard.row(BButton(text="Скорпировать ссылку", copy_text=types.CopyTextButton(text=f"https://t.me/{(await bot.get_me()).username}?start={code}")))
         keyboard.row(BButton(text="Назад", callback_data="referal_menu"))
         await bot.edit_message_text(text="Твой реферальный код:\n"
                                     f"<code>{code}</code>",
