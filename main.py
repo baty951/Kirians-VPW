@@ -57,12 +57,14 @@ async def send_welcome(m):
         )
         mess = m.text.split(maxsplit=1)
         ref = mess[1] if len(mess) > 1 else None
-        await bot.send_message(m.chat.id, "Welcome! Use /help to see available commands.")
+        text = await tr("START_MESS", 'en')
+        await bot.send_message(text=text,
+                               chat_id=m.chat.id,)
         if ref:
             user = await db.fetchone("SELECT first_name, id FROM users WHERE referal_code=%s", (ref))
             if user['id']:
                 await db.execute("UPDATE users SET referal=%s WHERE id=%s", (ref, uid))
-                text = f"You became referal of {user['first_name']}"
+                text = (await tr("REFERAL_BECAME", 'en')).format(user=user['first_name'])
                 await bot.send_message(text=text,
                                        chat_id=m.chat.id)
     else:
@@ -81,8 +83,9 @@ async def send_welcome(m):
 async def menu(m):
     u = await db.fetchone("SELECT id, locale, balance, configs_count FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     if not u:
-        return await bot.reply_to(text="Write first /start",
-                                  message=m)
+        text = await tr("NOT_USER", 'en')
+        return await bot.send_message(text=text,
+                                      chat_id=m.chat.id)
     else:
         keyboard = BMarkup()
         keyboard.row(BButton(text=await tr("My configs", u['locale']), callback_data="menu_config"))
@@ -107,33 +110,9 @@ async def send_help(m):
     if not u:
         return await bot.reply_to(text="Write first /start",
                                   message=m)
-    if(u['locale'] == "en"):
-        text = (
-            "/start - Start the bot\n"
-            "/menu - Open menu\n"
-            "/help - Show this help message\n"
-            "/newconfig - Buy new config\n"
-            "/myconfigs - Get all your configs\n"
-            "/settings - Chenge name/descriptions of configs"
-        )
-    else:
-        text = (
-            "/start - Запустить бота\n"
-            "/menu - Открыть меню\n"
-            "/help - Отобразить это сообщение\n"
-            "/newconfig - Купить новый конфиг\n"
-            "/myconfigs - Получить все твои конфиги\n"
-            "/settings - Изменить название/описание конфига"
-        )
-    
-    if (u['admin_lvl'] > 0) and (u['locale'] == "en"):
-        text += ( "\n"
-            "\n/a - show queue of requests"
-        )
-    elif (u['admin_lvl'] > 0) and (u['locale'] == "ru"):
-        text += (
-            "\n/a - отобразить стоящие в очереди"
-        )
+    text = await tr("HELP", u['locale'])
+    if (u['admin_lvl'] > 0):
+        text += await tr("ADMIN_HELP", u['locale'])
     await bot.send_message(text=text,
                        chat_id=m.chat.id)
     await clear(u['id'])
@@ -144,7 +123,8 @@ async def send_help(m):
 async def operat(m):
     u = await db.fetchone("SELECT id, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     if not u or u['admin_lvl'] < 0:
-        return await bot.send_message(m.chat.id, "This command not for you")
+        text = await tr("ACESS_ERR", u['locale'])
+        return await bot.send_message(text=text, chat_id=m.chat.id)
     else:
         await bot.send_message(m.chat.id, ("".join(pay_operations)+"\n" + str(conf_changes) if pay_operations or conf_changes else "No"))
         await bot.send_message(m.chat.id, str(dt.now()))
@@ -155,7 +135,8 @@ async def operat(m):
 async def referal(m):
     u = await db.fetchone("SELECT id, locale, referal FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     if not u:
-        return await bot.reply_to(text="Write first /start",
+        text = await tr("NOT_USER", 'en')
+        return await bot.reply_to(text=text,
                                   message=m)
     else:
         try:
@@ -163,25 +144,16 @@ async def referal(m):
             user = await db.fetchone("SELECT first_name, id FROM users WHERE referal_code=%s", (code))
             if user['id'] and not u['referal']:
                 await db.execute("UPDATE users SET referal=%s WHERE id=%s", (code, u['id']))
-                if u['locale'] == "en":
-                    text=f"You became referal of {user['first_name']}"
-                else:
-                    text=f"Вы стали рефералом {user['first_name']}"
+                text = (await tr("REFERAL_BECAME", u['locale'])).format(user=user['first_name'])
                 await bot.send_message(text=text,
                                        chat_id=m.chat.id)
             else:
-                if u['locale'] == "en":
-                    text="There is no such code."
-                else:
-                    text="Такого кода не существует"
+                text = await tr("REFERAL_ERR", u['locale'])
                 await bot.send_message(text=text,
                                        chat_id=m.chat.id)
         except:
             referals.append(u['id'])
-            if u['locale'] == "en":
-                text="Input referal code"
-            else:
-                text="Введи реферальный код"
+            text = await tr("INPUT_REFERAL", u['locale'])
             await bot.send_message(text=text,
                                    chat_id=m.chat.id)
 
@@ -208,7 +180,8 @@ async def sendall(m):
 async def message_hand(m):
     u = await db.fetchone("SELECT id, locale, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id))
     if not u:
-        return await bot.reply_to(text="Write first /start",
+        text = await tr("NOT_USER", 'en')
+        return await bot.reply_to(text=text,
                                   message=m)
     elif u['id'] in conf_changes.keys():
         if conf_changes[u['id']].split("_")[0] == "name":
@@ -217,31 +190,20 @@ async def message_hand(m):
                 cfg_id = conf_changes[u['id']].split("_")[1]
                 cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id=%s", (cfg_id))
                 keyboard = BMarkup(row_width=1)
-                if u['locale'] == "en":
-                    buttons = [
-                        BButton("Yes✅", callback_data=f"change_name_{cfg_id}"),
-                        BButton("No❌", callback_data="delete_mess")
-                        ]
-                    text = "Do you want change config's name from"
-                    text1 = "to"
-                else:
-                    buttons = [
-                        BButton("Да✅", callback_data=f"change_name_{cfg_id}"),
-                        BButton("Нет❌", callback_data="delete_mess")
-                        ]
-                    text = "Ты хочешь заменить название конфига с"
-                    text1 = "на"
+                buttons = [
+                    BButton(text=await tr("YES", u['locale']), callback_data=f"change_name_{cfg_id}"),
+                    BButton(text=await tr("CANCEL", u['locale']), callback_data="delete_mess")
+                    ]
                 keyboard.add(*buttons)
-                conf_changes[u['id']] = m.text
-                name = cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:]
-                await bot.send_message(text=f"{text}\n"
-                                       f"{name}\n"
-                                       f"{text1}\n"
-                                       f"{m.text}",
+                conf_changes[u['id']] = config_name
+                name = cfg['name'] if cfg['name'] else "".join(cfg['code_name'].split("_")[1:])
+                text = (await tr("CHANGING_CONFIG_NAME", u['locale'])).format(old_name=name, new_name=m.text)
+                await bot.send_message(text=text,
                                        chat_id=m.chat.id,
                                        reply_markup=keyboard)
             else:
-                await bot.send_message(m.chat.id, "Слишком длинное название")
+                text = await tr("TOO_LONG_NAME", u['locale'])
+                await bot.send_message(text=text, chat_id=m.chat.id)
         elif conf_changes[u['id']].split("_")[0] == "desc":
             config_desc = m.text
             if len(m.text) <= 255:
@@ -249,17 +211,15 @@ async def message_hand(m):
                 cfg = await db.fetchone("SELECT description FROM configs WHERE id=%s", (cfg_id))
                 keyboard = BMarkup(row_width=2)
                 buttons = [
-                    BButton("Yes✅", callback_data=f"change_descript_{cfg_id}_{m.text}"),
-                    BButton("No❌", callback_data="delete_mess")
+                    BButton(text=await tr("YES", u['locale']), callback_data=f"change_descript_{cfg_id}_{m.text}"),
+                    BButton(text=await tr("CANCEL", u['locale']), callback_data="delete_mess")
                 ]
                 keyboard.add(*buttons)
                 del(conf_changes[u['id']])
                 if cfg['description']:
-                    await bot.send_message(chat_id=m.chat.id,
-                                           text=f"Ты хочешь заменить описание конфига\n"
-                                           f"{cfg['description']}\n"
-                                           f"на\n"
-                                           f"{m.text}",
+                    text = (await tr("CHANGING_CONFIG_DESC", u['locale'])).format(old_desc=cfg['description'], new_desc=config_desc)
+                    await bot.send_message(text=text,
+                                           chat_id=m.chat.id,
                                            reply_markup=keyboard)
                 else:
                     await bot.send_message(m.chat.id, f"Ты хочешь поставить описание конфига\n{m.text}", reply_markup=keyboard)
