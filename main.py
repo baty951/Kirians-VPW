@@ -26,7 +26,7 @@ TOKEN = required_env('TOKEN')
 PROVIDER_TOKEN = required_env('PROVIDER_TOKEN')
 CONF_DIR = os.getenv('CONF_DIR', './configs')
 REFERAL_ALPHABET = required_env('REFERAL_SYMBOLS')
-cfg_tariff = {"9min":7000, "59min":10000, "11h":12000, "23h":15000, "2d":20000, "7d":25000, "1mo":66666}
+cfg_tariff = {"7d":7000, "14d":12000, "1mo":16000}
 pay_operations = dict()
 conf_changes=dict()
 balance_depos=[]
@@ -55,7 +55,7 @@ async def send_welcome(m):
         text = await tr("START_MESS", 'en')
         await bot.send_message(text=text,
                                chat_id=m.chat.id)
-        if ref:
+        if ref and ref != "site":
             user = await db.fetchone("SELECT first_name, id FROM users WHERE referal_code=%s", (ref,))
             if user and user['id']:
                 await db.execute("UPDATE users SET referal=%s WHERE id=%s", (ref, new_uid))
@@ -85,11 +85,11 @@ async def menu(m):
                                       chat_id=m.chat.id)
     else:
         keyboard = BMarkup()
-        keyboard.row(BButton(text=await tr("My configs", u['locale']), callback_data="menu_config"))
-        keyboard.row(BButton(text=await tr("Account", u['locale']), callback_data="account_menu"))
-        keyboard.row(BButton(text=await tr("Information", u['locale']), callback_data="menu_information"))
-        keyboard.row(BButton(text=await tr("Buy config", u['locale']), callback_data="choose_location_buy"))
-        keyboard.row(BButton(text=await tr("Пополнить баланс", u['locale']), callback_data="baldeposit"))
+        keyboard.row(BButton(text=await tr("MY_CFGS", u['locale']), callback_data="menu_config"))
+        keyboard.row(BButton(text=await tr("ACCOUNT", u['locale']), callback_data="account_menu"))
+        keyboard.row(BButton(text=await tr("INFO", u['locale']), callback_data="menu_information"))
+        keyboard.row(BButton(text=await tr("BUY_CFG", u['locale']), callback_data="choose_location_buy"))
+        keyboard.row(BButton(text=await tr("DEPOSIT", u['locale']), callback_data="baldeposit"))
         keyboard.row(BButton(text=await tr("LANG_CHANGE", u['locale']), callback_data="choose_language"))
         text = (await tr("MENU_MESS", u['locale'])).format(
             balance = u['balance'],
@@ -117,26 +117,18 @@ async def send_help(m):
 
 
 
-@bot.message_handler(commands = ['a'])
-async def operat(m):
-    u = await db.fetchone("SELECT id, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id,))
-    if not u or u['admin_lvl'] < 0:
-        text = await tr("ACESS_ERR", 'en')
-        return await bot.send_message(text=text, chat_id=m.chat.id)
-    else:
-        await bot.send_message(m.chat.id, ("".join(pay_operations)+"\n" + str(conf_changes) if pay_operations or conf_changes else "No"))
-        await bot.send_message(m.chat.id, str(dt.now()))
-
-
-
 @bot.message_handler(commands = ['ref', 'referal'])
 async def referal(m):
     u = await db.fetchone("SELECT id, locale, referal FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     if not u:
-        text = await tr("NOT_USER", 'en')
+        text = await tr("NOT_USER", u['locale'])
         return await bot.reply_to(text=text,
                                   message=m)
     else:
+        if u['referal']:
+            text = await tr("ALREADY_REFERAL", u['locale'])
+            return await bot.send_message(text=text,
+                                          chat_id=m.chat.id)
         try:
             code = m.text.split()[1]
             user = await db.fetchone("SELECT first_name, id FROM users WHERE referal_code=%s", (code,))
@@ -157,11 +149,30 @@ async def referal(m):
 
 
 
+@bot.message_handler(commands = ['a'])
+async def operat(m):
+    u = await db.fetchone("SELECT id, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id,))
+    if not u or u['admin_lvl'] < 0:
+        text = await tr("ACESS_ERR", 'en')
+        return await bot.send_message(text=text, chat_id=m.chat.id)
+    else:
+        text = ("Operations:\n"
+                "=================\n"
+                "pay_op: "+str(pay_operations)+"\n"
+                "conf_changes: "+str(conf_changes)+"\n"
+                "balance_depos: "+str(balance_depos)+"\n"
+                "referals: "+str(referals)
+        )
+        await bot.send_message(m.chat.id, text)
+        await bot.send_message(m.chat.id, str(dt.now()))
+
+
+
 @bot.message_handler(commands = ['sendall'])
 async def sendall(m):
     u = await db.fetchone("SELECT id, admin_lvl, locale FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     if not u or u['admin_lvl'] < 1:
-        text = await tr("CMD_NOT_FOR_YOU", (u or {}).get('locale', 'en'))
+        text = await tr("ACESS_ERR")
         return await bot.send_message(m.chat.id, text)
     else:
         text = m.text.replace("/sendall ", "")
@@ -177,7 +188,7 @@ async def sendall(m):
 
 @bot.message_handler(chat_types=['private'], content_types=['text'])
 async def message_hand(m):
-    u = await db.fetchone("SELECT id, locale, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id,))
+    u = await db.fetchone("SELECT id, locale, admin_lvl, referal FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     if not u:
         text = await tr("NOT_USER", 'en')
         return await bot.reply_to(text=text,
@@ -250,8 +261,8 @@ async def message_hand(m):
             title=f"Пополнение {summ} для баланса {m.from_user.first_name}"
             description=f"Пополнение внутриботового баланса {m.from_user.first_name}({m.from_user.id}) на {summ}руб"
         await bot.send_invoice(chat_id=m.chat.id,
-                               title=title,
-                               description=description,
+                               title=(await tr("INVOICE_DEPOSIT_TITLE", u['locale'])).format(amount=summ),
+                               description=(await tr("INVOICE_DEPOSIT_DESC", u['locale'])).format(amount=summ),
                                invoice_payload=f"balance_deposit_{summ}_{payment_id}",
                                provider_token=PROVIDER_TOKEN,
                                currency="RUB",
@@ -260,6 +271,10 @@ async def message_hand(m):
                                need_email=True,
                                send_email_to_provider=True)
     elif u['id'] in referals:
+        if u['referal']:
+            text = await tr("ALREADY_REFERAL", u['locale'])
+            return await bot.send_message(text=text,
+                                          chat_id=m.chat.id)
         code = m.text.strip().split()[0]
         user = await db.fetchone('SELECT id, first_name FROM users WHERE referal_code=%s', (code,))
         if user and user['id']:
@@ -391,11 +406,11 @@ async def  callback_query(c):
     #Input
     elif c.data.startswith("menu_main"):
         keyboard = BMarkup()
-        keyboard.row(BButton(text=await tr("My configs", u['locale']), callback_data="menu_config"))
-        keyboard.row(BButton(text=await tr("Account", u['locale']), callback_data="account_menu"))
-        keyboard.row(BButton(text=await tr("Information", u['locale']), callback_data="menu_information"))
-        keyboard.row(BButton(text=await tr("Buy config", u['locale']), callback_data="choose_location_buy"))
-        keyboard.row(BButton(text=await tr("Пополнить баланс", u['locale']), callback_data="baldeposit"))
+        keyboard.row(BButton(text=await tr("MY_CFGS", u['locale']), callback_data="menu_config"))
+        keyboard.row(BButton(text=await tr("ACCOUNT", u['locale']), callback_data="account_menu"))
+        keyboard.row(BButton(text=await tr("INFO", u['locale']), callback_data="menu_information"))
+        keyboard.row(BButton(text=await tr("BUY_CFG", u['locale']), callback_data="choose_location_buy"))
+        keyboard.row(BButton(text=await tr("DEPOSIT", u['locale']), callback_data="baldeposit"))
         keyboard.row(BButton(text=await tr("LANG_CHANGE", u['locale']), callback_data="choose_language"))
         text = (await tr("MENU_MESS", u['locale'])).format(
             balance = u['balance'],
@@ -411,7 +426,8 @@ async def  callback_query(c):
     elif c.data.startswith("choose_language"):
         buttons = [
             BButton(text="🇷🇺Русский(RU)", callback_data="set_language_ru"),
-            BButton(text="🇬🇧English(UK)", callback_data="set_language_en")
+            BButton(text="🇬🇧English(UK)", callback_data="set_language_en"),
+            BButton(text=await tr("BACK", u['locale']), callback_data="menu_main")
         ]
         keyboard = BMarkup(row_width=1)
         keyboard.add(*buttons)
@@ -476,7 +492,7 @@ async def  callback_query(c):
     elif c.data.startswith("choose_tariff"):
         type, loc_id = c.data.split("_")[2:]
         buttons = [
-            BButton(text=x, callback_data=f"choose_pay_{type}_{loc_id}_{x}") 
+            BButton(text=f"{x}({int(str(cfg_tariff[x])[:-2])}{await tr("RUB", u['locale'])})", callback_data=f"choose_pay_{type}_{loc_id}_{x}") 
             for x in cfg_tariff.keys()
         ]
         keyboard = BMarkup(row_width=2)
@@ -494,12 +510,12 @@ async def  callback_query(c):
         if type == "buy":
             buttons = [
                 BButton(text="ЮKassa", callback_data=f"buy_config_{loc_id}_{tariff_k}"),
-                BButton(text=await tr("Пополнить баланс", u['locale']), callback_data=f"pay_config_{loc_id}_{tariff_k}")
+                BButton(text=await tr("BALANCE", u['locale']), callback_data=f"pay_config_{loc_id}_{tariff_k}")
             ]
         elif type == "extend":
             buttons = [
                 BButton(text="ЮKassa", callback_data=f"buy_extend_config_{loc_id}_{tariff_k}"),
-                BButton(text=await tr("Пополнить баланс", u['locale']), callback_data=f"pay_extend_config_{loc_id}_{tariff_k}")
+                BButton(text=await tr("BALANCE", u['locale']), callback_data=f"pay_extend_config_{loc_id}_{tariff_k}")
             ]
         keyboard = BMarkup(row_width = 2)
         keyboard.add(*buttons)
@@ -517,16 +533,16 @@ async def  callback_query(c):
     #Input _(location id)_(tariff key)
     elif c.data.startswith("buy_config"):
         await bot.delete_message(c.message.chat.id, c.message.id)
-        data = c.data.split("_")
-        location = (await db.fetchone("SELECT name FROM locations WHERE id=%s",(int(data[-2]),)))['name']
-        cfg_id = await db.execute("INSERT INTO configs (user_id, location_id) VALUES (%s, %s)",(u['id'], int(data[-2])))
+        loc, tariff_k = c.data.split("_")[-2:]
+        location = (await db.fetchone("SELECT name FROM locations WHERE id=%s",(int(loc),)))['name']
+        cfg_id = await db.execute("INSERT INTO configs (user_id, location_id) VALUES (%s, %s)",(u['id'], int(loc)))
         await db.execute("UPDATE configs SET code_name=%s where id=%s",(f"{location}_{c.from_user.username}_{cfg_id}", cfg_id))
-        payload=f"newconfig_payload_{data[-1]}_{cfg_id}"
+        payload=f"newconfig_payload_{tariff_k}_{cfg_id}"
         pay_operations[payload] = ""
-        prices = [types.LabeledPrice(label=f"Config for {data[-1]}", amount=cfg_tariff[data[-1]])]
+        prices = [types.LabeledPrice(label=f"Config for {tariff_k}", amount=cfg_tariff[tariff_k])]
         await bot.send_invoice(chat_id=c.message.chat.id,
-                                      title=f"test {data[-1]} config pay",
-                                      description=f"test description for {data[-1]} config pay, card for pay: 2200 0000 0000 0004 11/11 111",
+                                      title=(await tr("INVOICE_CONFIG_TITLE", u['locale'])).format(duration=await to_us(tariff_k, u['locale'])),
+                                      description=(await tr("INVOICE_CONFIG_DESC", u['locale'])).format(duration=await to_us(tariff_k, u['locale']), location=location),
                                       invoice_payload=payload,
                                       provider_token=PROVIDER_TOKEN,
                                       currency='RUB',
@@ -596,6 +612,8 @@ async def  callback_query(c):
         ]
         keyboard = BMarkup(row_width=2)
         keyboard.add(*buttons)
+        keyboard.add(BButton(text=await tr("BTN_SOON", u['locale']), callback_data="soon"))
+        keyboard.row(BButton(text=await tr("BACK", u['locale']), callback_data="config_menu_"+cfg_id))
         text = await tr("CHOOSE_CONFIG_TARIFF", u['locale'])
         return await bot.edit_message_text(text=text, chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
     #Output buy_extend_config_(config id)_(tariff key)
@@ -605,12 +623,16 @@ async def  callback_query(c):
         cfg_id, tariff_k = c.data.split("_")[3:]
         data = c.data.replace("buy_contin_config_", "").split("_")
         await bot.delete_message(c.message.chat.id, c.message.id)
+        cfg = await db.fetchone("SELECT code_name, name FROM configs WHERE id=%s", (cfg_id,))
+        name = cfg["name"] if cfg["name"] else "".join(cfg["code_name"].split("_")[1:])
         payload = f"config_contin_{str(str(dt.now()).split(':')[1])}_{data[-1]}_{data[-2]}"
         pay_operations[payload] = ""
         prices = [types.LabeledPrice(label=f"continue config {data[-2]}", amount=cfg_tariff[data[-1]])]
+        title = (await tr("INVOICE_EXTEND_TITLE", u['locale'])).format(name=name, duration=await to_us(tariff_k, u['locale']))
+        description = (await tr("INVOICE_EXTEND_DESC", u['locale'])).format(name=name, duration=await to_us(tariff_k, u['locale']))
         await bot.send_invoice(chat_id=c.message.chat.id,
-                                      title=f"test {data[-2]} config continue",
-                                      description=f"test description for {data[-2]} config continue, card for pay: 2200 0000 0000 0004 11/11 111",
+                                      title = (await tr("INVOICE_EXTEND_TITLE", u['locale'])).format(name=name, duration=await to_us(tariff_k, u['locale'])),
+                                        description = (await tr("INVOICE_EXTEND_DESC", u['locale'])).format(name=name, duration=await to_us(tariff_k, u['locale'])),
                                       invoice_payload=payload,
                                       provider_token=PROVIDER_TOKEN,
                                       currency='RUB',
@@ -688,7 +710,8 @@ async def  callback_query(c):
         conf_changes[u['id']]=cfg_id
         buttons = [
             BButton(text="Название", callback_data=f"config_name_{cfg_id}"),
-            BButton(text="Описание", callback_data=f"config_descript_{cfg_id}")
+            BButton(text="Описание", callback_data=f"config_descript_{cfg_id}"),
+            BButton(text=await tr("BACK", u['locale']), callback_data=f"config_menu_{cfg_id}")
         ]
         keyboard = BMarkup(row_width=1)
         keyboard.add(*buttons)
@@ -860,7 +883,17 @@ async def to_msql(s: str) -> tuple[str, str]:
         return s[:-1], "DAY"
     else:
         return "1", "MONTH"
-      
+
+async def to_us(s: str, loc: str) -> str:
+    s = s.strip().lower()
+    if s.endswith("min"):
+        return f"{s[:-3]} {await tr("MIN", loc)}"
+    elif s.endswith("h"):
+        return f"{s[:-1]} {await tr("H", loc)}"
+    elif s.endswith("d"):
+        return f"{s[:-1]} {await tr("D", loc)}"
+    else:
+        return f"1 {await tr("M", loc)}"
 
 async def clear(u_id):
     if u_id in conf_changes.keys():
