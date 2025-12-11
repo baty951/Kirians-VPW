@@ -7,7 +7,7 @@ TRANSLATIONS = {
         "NOT_USER": "⚠️ Ты не зарегистрирован в системе. Напиши /start для регистрации.",
 
         "HELP": (
-            "🤖 <b>Я бот для управления VPN-ключами AmneziaVPN.</b>\n\n"
+            "🤖 <b>Я бот для управления ключами AmneziaVPN.</b>\n\n"
             "📌 <b>Доступные команды:</b>\n"
             "• /start — начать работу с ботом\n"
             "• /menu — открыть главное меню\n"
@@ -85,6 +85,7 @@ TRANSLATIONS = {
         "INVOICE_EXTEND_TITLE": "🔁 Продление ключа {name} на {duration}",
         "INVOICE_EXTEND_DESC": "Оплата продления срока действия твоего цифрового ключа {name} на {duration}. После оплаты время действия будет увеличено автоматически.",
         "CONFIG_EXTEND_SUCCESS": "✅ Ключ <b>{name}</b> был успешно продлён.",
+        "CONFIG_VALID_UNTIL": "⏰ Действителен до: {date} (GMT+3)",
         
         "CONFIG_INFO" : "Название: {name}\nОписание: {description}\nДействителен до: {valid_until}",
         
@@ -148,12 +149,17 @@ TRANSLATIONS = {
         "ASK_DEPOSIT_SUM": "💳 Напиши сумму пополнения в рублях (от 80₽):",
         "DEPOSIT_CANCELED": "❌ Пополнение отменено.",
         "BALANCE_DEPOSIT_SUCCESS": "✅ Баланс успешно пополнен на {amount}₽.",
-        "BALANCE" : "Баланс",
+        "BALANCE" : "Баланс(-5%)",
 
         # ==== Информация о боте / прочее ====
         "ACCOUNT_MENU_TITLE": "👤 Личный кабинет",
         "BOT_CHANNEL": "📢 Канал бота",
-        "BOT_INFO": "🔐 Это VPN-бот для управления ключами.",
+        "BOT_INFO": ("🔐 Kirians-VPW — бот для управления безопасным доступом к интернет-сервисам.\n"
+                     "Он помогает:\n\n"
+                     "• получать и продлевать цифровые ключи доступа 🗝\n"
+                     "• подключаться к удалённым серверам через удобные приложения 📱💻\n"
+                     "• использовать онлайн-сервисы, которые могут быть недоступны из вашего региона 🌍\n\n"
+                     "Все ключи хранятся в твоём личном кабинете — ты в любой момент можешь скачать файл, отсканировать QR-код или продлить время действия ключа."),
 
         "PRECHECKOUT_ERROR": "⚠️ Ошибка. Попробуй ещё раз или напиши в группу бота.",
         "MIN" : "минут",
@@ -175,7 +181,7 @@ TRANSLATIONS = {
         "NOT_USER": "⚠️ You are not registered. Send /start to register.",
 
         "HELP": (
-            "🤖 <b>I am a bot for managing AmneziaVPN configs.</b>\n\n"
+            "🤖 <b>I am a bot for managing AmneziaVPN keys.</b>\n\n"
             "📌 <b>Available commands:</b>\n"
             "• /start — start working with the bot\n"
             "• /menu — open the main menu\n"
@@ -217,7 +223,7 @@ TRANSLATIONS = {
             "<a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN</a>"
         ),
 
-        "Vpn duration": "⏱ Choose VPN key duration:",
+        "CFG_DURATION": "⏱ Choose key duration:",
 
         "NO_CONFIGS": "📭 You don't have any active configs yet.",
         "CHOOSE_CONFIG": "📂 Choose a config from the list:",
@@ -314,12 +320,17 @@ TRANSLATIONS = {
         "ASK_DEPOSIT_SUM": "💳 Send deposit amount in rubles (from 80 rub):",
         "DEPOSIT_CANCELED": "❌ Deposit cancelled.",
         "BALANCE_DEPOSIT_SUCCESS": "✅ Your balance has been credited with {amount}rub.",
-        "BALANCE" : "Balance",
+        "BALANCE" : "Balance(-5%)",
 
         # ==== Bot info ====
         "ACCOUNT_MENU_TITLE": "👤 Account",
         "BOT_CHANNEL": "📢 Bot channel",
-        "BOT_INFO": "🔐 This is a VPN bot for managing configs.",
+        "BOT_INFO": ("🔐 Kirians-VPW is a bot for managing secure access to online services.\n"
+                     "It helps you:\n\n"
+                     "• get and extend digital access keys 🗝\n"
+                     "• connect to remote servers via simple apps 📱💻\n"
+                     "• use online services that may be unavailable from your region 🌍\n\n"
+                     "All your keys are stored in your personal cabinet — you can download the file, scan a QR code or extend the key at any time."),
 
         "SOON_FUNC": "🚧 This function isn't available now. I may add it later...",
         "PRECHECKOUT_ERROR": "⚠️ Error. Try again or write to the bot's group.",

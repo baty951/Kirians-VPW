@@ -101,7 +101,6 @@ async def menu(m):
     await clear(u['id'])
 
 
-
 @bot.message_handler(commands=['help','h'])
 async def send_help(m):
     u = await db.fetchone("SELECT id, locale, admin_lvl FROM users WHERE tg_user_id=%s", (m.from_user.id,))
@@ -114,7 +113,6 @@ async def send_help(m):
     await bot.send_message(text=text,
                            chat_id=m.chat.id)
     await clear(u['id'])
-
 
 
 @bot.message_handler(commands = ['ref', 'referal'])
@@ -132,8 +130,9 @@ async def referal(m):
         try:
             code = m.text.split()[1]
             user = await db.fetchone("SELECT first_name, id FROM users WHERE referal_code=%s", (code,))
-            if user and user['id'] and not u['referal']:
+            if user and user['id'] and not u['referal'] and code != "site":
                 await db.execute("UPDATE users SET referal=%s WHERE id=%s", (code, u['id']))
+                referals.remove(u['id'])
                 text = (await tr("REFERAL_BECAME", u['locale'])).format(user=user['first_name'])
                 await bot.send_message(text=text,
                                        chat_id=m.chat.id)
@@ -146,7 +145,6 @@ async def referal(m):
             text = await tr("INPUT_REFERAL", u['locale'])
             await bot.send_message(text=text,
                                    chat_id=m.chat.id)
-
 
 
 @bot.message_handler(commands = ['a'])
@@ -167,7 +165,6 @@ async def operat(m):
         await bot.send_message(m.chat.id, str(dt.now()))
 
 
-
 @bot.message_handler(commands = ['sendall'])
 async def sendall(m):
     u = await db.fetchone("SELECT id, admin_lvl, locale FROM users WHERE tg_user_id=%s", (m.from_user.id,))
@@ -183,7 +180,6 @@ async def sendall(m):
                 await asyncio.sleep(0.1)
             except:
                 pass
-
 
 
 @bot.message_handler(chat_types=['private'], content_types=['text'])
@@ -277,14 +273,13 @@ async def message_hand(m):
                                           chat_id=m.chat.id)
         code = m.text.strip().split()[0]
         user = await db.fetchone('SELECT id, first_name FROM users WHERE referal_code=%s', (code,))
-        if user and user['id']:
+        if user and user['id'] and not u['referal'] and code != "site":
             await db.execute("UPDATE users SET referal=%s WHERE id=%s", (code, u['id']))
             text = (await tr("REFERAL_BECAME", u['locale'])).format(user=user['first_name'])
         else:
             text = await tr("REFERAL_ERR", u['locale'])
         await bot.send_message(text=text,
                                chat_id=m.chat.id)
-
 
 
 @bot.pre_checkout_query_handler(func=lambda query: True)
@@ -308,7 +303,6 @@ async def pre_checkout(q):
     else:
         err = await tr("PRECHECKOUT_ERROR", 'en')
         await bot.answer_pre_checkout_query(q.id, ok=False, error_message=err)
-
 
 
 @bot.message_handler(content_types=['successful_payment'])
@@ -367,8 +361,7 @@ async def successful_payment(m):
                                chat_id=m.chat.id)
 
 
-
-@bot.callback_query_handler(func = lambda c: any(c.data.startswith(i) for i in ["soon", "menu", "config", "extend", "buy", "pay", "accept", "delete_mess", "change", "show", "baldeposit", "account", "referal", "choose", "set"]))
+@bot.callback_query_handler(func = lambda c: any(c.data.startswith(i) for i in ["soon", "menu", "config", "extend", "buy", "pay", "accept", "delete_mess", "change", "show", "baldeposit", "account", "referal", "choose", "set", "cancel"]))
 async def  callback_query(c):
     u = await db.fetchone("SELECT id, admin_lvl, locale, balance, configs_count FROM users WHERE tg_user_id=%s", (c.from_user.id,))
     if not u:
@@ -394,6 +387,7 @@ async def  callback_query(c):
             BButton(text=(i["name"] if i["name"] else "".join(i["code_name"].split("_")[1:])), callback_data=f"config_menu_{i['id']}")
             for i in rows
         ]
+        buttons.append(BButton(text=await tr("BACK", u['locale']), callback_data="menu_main"))
         keyboard=BMarkup(row_width=1)
         keyboard.add(*buttons)
         text = await tr("CHOOSE_CONFIG", u['locale'])
@@ -458,7 +452,8 @@ async def  callback_query(c):
             BButton(text=await tr("BTN_SHOW_QR", u['locale']), callback_data=f"show_config_qr_{cfg_id}"),
             BButton(text=await tr("BTN_GET_FILE", u['locale']), callback_data=f"show_config_conf_{cfg_id}"),
             BButton(text=await tr("BTN_EXTEND_CONFIG", u['locale']), callback_data=f"extend_config_{cfg_id}"),
-            BButton(text=await tr("BTN_EDIT_CONFIG", u['locale']), callback_data=f"config_settings_{cfg_id}")
+            BButton(text=await tr("BTN_EDIT_CONFIG", u['locale']), callback_data=f"config_settings_{cfg_id}"),
+            BButton(text=await tr("BACK", u['locale']), callback_data="menu_config")
         ]
         keyboard=BMarkup(row_width=1)
         keyboard.add(*buttons)
@@ -467,6 +462,11 @@ async def  callback_query(c):
             valid_until=cfg['valid_until'],
             description=description
         )
+        if c.message.content_type in ["photo", "document"]:
+            await bot.delete_message(chat_id=c.message.chat.id, message_id=c.message.id)
+            return await bot.send_message(text=text,
+                                          chat_id=c.message.chat.id,    
+                                          reply_markup=keyboard)
         await bot.edit_message_text(text=text,
                                     chat_id=c.message.chat.id,
                                     message_id=c.message.id,
@@ -484,6 +484,7 @@ async def  callback_query(c):
         ]
         buttons.append(BButton(text=await tr("BTN_SOON", u['locale']), callback_data="soon"))
         keyboard.add(*buttons)
+        keyboard.row(BButton(text=await tr("BACK", u['locale']), callback_data="menu_main"))
         text = await tr("CHOOSE_LOCATION", u['locale'])
         return await bot.edit_message_text(text=text, chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
     #Output choose_tariff_(type)_(location id)
@@ -496,8 +497,10 @@ async def  callback_query(c):
             for x in cfg_tariff.keys()
         ]
         keyboard = BMarkup(row_width=2)
+        if type == "buy" : keyboard.add(*[BButton(text = f"15{await tr("MIN", u['locale'])}(free)", callback_data=f"config_free_{loc_id}")])
         keyboard.add(*buttons)
-        text = await tr("Vpn duration", u['locale'])
+        keyboard.row(BButton(text=await tr("BACK", u['locale']), callback_data=f"choose_location_{type}"))
+        text = await tr("CFG_DURATION", u['locale'])
         return await bot.edit_message_text(text=text,
                                            chat_id=c.message.chat.id,
                                            message_id=c.message.id,
@@ -519,6 +522,7 @@ async def  callback_query(c):
             ]
         keyboard = BMarkup(row_width = 2)
         keyboard.add(*buttons)
+        keyboard.row(BButton(text=await tr("BACK", u['locale']), callback_data=f"choose_tariff_{type}_{loc_id}"))
         amount_rub = cfg_tariff[tariff_k] / 100
         text = (await tr("PAY_SUMMARY", u['locale'])).format(
             amount=int(amount_rub),
@@ -577,6 +581,7 @@ async def  callback_query(c):
     #Input _(location id)_(summ)_(tariff key)
     elif c.data.startswith("accept_pay_config"):
         loc_id, summ, tariff_k = c.data.split("_")[3:]
+        await bot.delete_message(chat_id=c.message.chat.id, message_id=c.message.id)
         if u['balance'] >= (summ := int(summ)):
             await db.execute("UPDATE users SET balance = %s WHERE id = %s",
                              (u['balance'] - summ, u['id']))
@@ -610,9 +615,9 @@ async def  callback_query(c):
             BButton(text=x, callback_data=f"buy_extend_config_{cfg_id}_{x}") 
             for x in cfg_tariff.keys()
         ]
+        buttons.append(BButton(text=await tr("BTN_SOON", u['locale']), callback_data="soon"))
         keyboard = BMarkup(row_width=2)
         keyboard.add(*buttons)
-        keyboard.add(BButton(text=await tr("BTN_SOON", u['locale']), callback_data="soon"))
         keyboard.row(BButton(text=await tr("BACK", u['locale']), callback_data="config_menu_"+cfg_id))
         text = await tr("CHOOSE_CONFIG_TARIFF", u['locale'])
         return await bot.edit_message_text(text=text, chat_id=c.message.chat.id, message_id=c.message.id, reply_markup=keyboard)
@@ -686,12 +691,17 @@ async def  callback_query(c):
         cfg = await db.fetchone("SELECT name, code_name,location_id, valid_until FROM configs WHERE id = %s",
                                 (cfg_id,))
         name = "".join(cfg['name'] if cfg['name'] else cfg['code_name'].split("_")[1:])
+        keyboard = BMarkup(keyboard=[
+            [BButton(text=await tr("BTN_SHOW_QR", u['locale']), callback_data=f"show_config_qr_{cfg_id}")],
+            [BButton(text=await tr("BACK", u['locale']), callback_data=f"config_menu_{cfg_id}")]
+        ])
         with open(os.path.join(CONF_DIR, cfg['code_name']+".conf"), 'rb') as file:
             location = (await db.fetchall("SELECT name FROM locations WHERE id = %s", (cfg['location_id'],)))[0]
             caption = (await tr("CONFIG_VALID_UNTIL", u['locale'])).format(date=cfg['valid_until'])
             await bot.send_document(chat_id=c.message.chat.id,
                                     document=types.InputFile(file, file_name=name+".conf"),
-                                    caption=caption)
+                                    caption=caption,
+                                    reply_markup=keyboard)
     #Output Message(document)
 
     #Input _(config id)
@@ -700,8 +710,12 @@ async def  callback_query(c):
         cfg_id = c.data.split("_")[-1]
         cfg = await db.fetchone("SELECT name, code_name FROM configs WHERE id = %s", (cfg_id,))
         name = "".join((cfg['name'] if cfg['name'] else cfg['code_name']).split("_")[1:])
+        keyboard = BMarkup(keyboard=[
+            [BButton(text=await tr("BTN_GET_FILE", u['locale']), callback_data=f"show_config_conf_{cfg_id}")],
+            [BButton(text=await tr("BACK", u['locale']), callback_data=f"config_menu_{cfg_id}")]
+        ])
         with open(os.path.join(CONF_DIR, cfg['code_name']+".png"), "rb") as qr:
-                await bot.send_photo(chat_id=c.message.chat.id, photo=qr, caption=name)
+                await bot.send_photo(chat_id=c.message.chat.id, photo=qr, caption=name, reply_markup=keyboard)
     #Output Message(photo)
 
     #Input _(config id)
@@ -774,24 +788,25 @@ async def  callback_query(c):
     elif c.data.startswith("baldeposit"):
         balance_depos.append(u['id'])
         keyboard = BMarkup()
-        keyboard.row(BButton(text=await tr("CANCEL", u['locale']), callback_data="cancel_deposit"))
+        keyboard.add(BButton(text=await tr("CANCEL", u['locale']), callback_data="cancel_deposit"))
         text = await tr("ASK_DEPOSIT_SUM", u['locale'])
         await bot.edit_message_text(text=text,
                                     chat_id=c.message.chat.id,
                                     message_id=c.message.id,
                                     reply_markup=keyboard)
     #Output Message, balance_depos.append(u[id]) / cancel_deposit
-
+    
     #Input
     elif c.data.startswith("cancel_deposit"):
-        balance_depos.remove(u['id'])
         keyboard = BMarkup()
-        keyboard.row(BButton(text=await tr("BACK", u['locale']), callback_data="menu_main"))
+        keyboard.add(BButton(text=await tr("BACK", u['locale']), callback_data="menu_main"))
+        try: balance_depos.remove(u['id'])
+        except: pass
         text = await tr("DEPOSIT_CANCELED", u['locale'])
-        await bot.edit_message_text(text,
-                                    chat_id=c.message.chat.id,
-                                    message_id=c.message.id,
-                                    reply_markup=keyboard)
+        await bot.edit_message_text(text=text,
+                               chat_id=c.message.chat.id,
+                               message_id=c.message.id,
+                               reply_markup=keyboard)
     #Output remove u[id] from balance_depos
 
     #Input
@@ -856,7 +871,32 @@ async def  callback_query(c):
                                     message_id=c.message.id,
                                     reply_markup=keyboard)
     #Output Url / menu_main
-
+    
+    #Input _(location id)
+    elif c.data.startswith("config_free"):
+        loc_id = c.data.split("_")[-1]
+        location = (await db.fetchone("SELECT name FROM locations WHERE id=%s",(int(loc_id),)))['name']
+        cfg_id = await db.execute("INSERT INTO configs (user_id, location_id) VALUES (%s, %s)",
+                                  (u['id'], int(loc_id)))
+        cfg_name = f"{location}_{c.from_user.username}_{cfg_id}"
+        subprocess.run(['python3', 'awgcfg.py', '-a', cfg_name])
+        subprocess.run(['python3', 'awgcfg.py', '-c', '--dir', str(CONF_DIR)])
+        subprocess.run(['python3', 'awgcfg.py', '-q', '--dir', str(CONF_DIR)])
+        subprocess.run(['systemctl', 'restart', 'awg-quick@awg0.service'])
+        await db.execute("UPDATE configs SET code_name=%s where id=%s",(cfg_name, cfg_id))
+        await db.execute('UPDATE `users` SET configs_count=configs_count + 1 WHERE id=%s', (u['id'],))
+        await db.execute("UPDATE configs SET valid_until=%s, status='active' WHERE id = %s",
+                         ((str(dt.now()+(await to_td("15min"))).split("."))[0], cfg_id))
+        text = await tr("CONFIG_HELP", u['locale'])
+        await bot.send_message(text = text,
+                               chat_id = c.message.chat.id)
+        with open(os.path.join(CONF_DIR,str(cfg_name)+".png"), "rb") as qr:
+            await bot.send_photo(chat_id=c.message.chat.id,
+                                 photo = qr)
+        with open(os.path.join(CONF_DIR,str(cfg_name)+".conf"), "rb") as file:
+            await bot.send_document(chat_id = c.message.chat.id,
+                                    document=types.InputFile(file, file_name="".join(cfg_name.split("_")[1:])+".conf"))
+        
     #Input
     elif c.data.startswith("delete_mess"):
         return await bot.delete_message(c.message.chat.id, c.message.id)
@@ -932,7 +972,7 @@ async def daily_check(x):
 async def main():
     await db.init_pool()
     await bot.delete_webhook(drop_pending_updates=True)
-    daily_task = asyncio.create_task(daily_check(600))
+    daily_task = asyncio.create_task(daily_check(900))
     bot_task = asyncio.create_task(bot.infinity_polling(
         allowed_updates=['message', 'callback_query', 'pre_checkout_query', 'successful_payment'],
         request_timeout=60,
