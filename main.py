@@ -1,6 +1,6 @@
 from locale import currency
 from telebot.async_telebot import AsyncTeleBot
-import asyncio, os, subprocess
+import asyncio, asyncssh, sys, os, subprocess
 from telebot import types
 from telebot.types import InlineKeyboardButton as BButton
 from telebot.types import InlineKeyboardMarkup as BMarkup
@@ -180,7 +180,7 @@ async def sendall(m):
                 await asyncio.sleep(0.1)
             except:
                 pass
-
+    
 
 @bot.message_handler(chat_types=['private'], content_types=['text'])
 async def message_hand(m):
@@ -240,7 +240,7 @@ async def message_hand(m):
             text = await tr("SEND_INT", u['locale'])
             return await bot.send_message(text=text,
                                           chat_id=m.chat.id)
-        if summ <= 80:
+        if summ < 80:
             text = (await tr("MIN_AMOUNT", u['locale'])).format(min=80)
             return await bot.send_message(text=text,
                                           chat_id=m.chat.id)
@@ -263,7 +263,7 @@ async def message_hand(m):
                                provider_token=PROVIDER_TOKEN,
                                currency="RUB",
                                prices=price,
-                               photo_url="http://kirian.su/test/Money.png",
+                               photo_url="http://vpw.kirian.su/photos/coin.png",
                                need_email=True,
                                send_email_to_provider=True)
     elif u['id'] in referals:
@@ -310,7 +310,7 @@ async def successful_payment(m):
     u = await db.fetchone("SELECT id, locale FROM users WHERE tg_user_id=%s", (m.from_user.id,))
     payment = m.successful_payment
     if payment.invoice_payload.startswith("newconfig"):
-        cfg_id = payment.invoice_payload.split("_")[-1]
+        tariff_k, cfg_id = payment.invoice_payload.split("_")[-2:]
         del(pay_operations[payment.invoice_payload])
         await db.execute(
             "UPDATE payments SET status=%s, paid_at = CURRENT_TIMESTAMP(), raw_payload=%s, provider_tx_id=%s, telegram_tx_id=%s WHERE config_id=%s",
@@ -318,15 +318,7 @@ async def successful_payment(m):
         )
         location = (await db.fetchone("SELECT name FROM locations AS l WHERE l.id = (SELECT location_id FROM configs WHERE id = %s)", (cfg_id,)))['name']
         cfg_name = f"{location}_{m.from_user.username}_{cfg_id}"
-        subprocess.run(['python3', 'awgcfg.py', '-a', cfg_name])
-        subprocess.run(['python3', 'awgcfg.py', '-c', '--dir', str(CONF_DIR)])
-        subprocess.run(['python3', 'awgcfg.py', '-q', '--dir', str(CONF_DIR)])
-        subprocess.run(['systemctl', 'restart', 'awg-quick@awg0.service'])
-        await db.execute('UPDATE `users` SET configs_count=configs_count + 1 WHERE tg_user_id=%s', (m.from_user.id,))
-        await db.execute(
-            "UPDATE configs SET valid_until=%s, status='active' WHERE id = %s",
-            ((str(dt.now()+(await to_td(payment.invoice_payload.split("_")[-2]))).split("."))[0], cfg_id)
-        )
+        await gen_key(cfg_name, cfg_id, tariff_k, u)
         text = await tr("CONFIG_HELP", u['locale'])
         await bot.send_message(text=text,
                                chat_id=m.chat.id)
@@ -551,7 +543,7 @@ async def  callback_query(c):
                                       provider_token=PROVIDER_TOKEN,
                                       currency='RUB',
                                       prices=prices,
-                                      photo_url="http://kirian.su/test/VPW.jpg",
+                                      photo_url="http://vpw.kirian.su/VPW.png",
                                       need_email=True,
                                       send_email_to_provider=True)
     #Output Message(invoice), pay_operations["newconfig_payload_(triff key)_(config id)"] = ""
@@ -642,7 +634,7 @@ async def  callback_query(c):
                                       provider_token=PROVIDER_TOKEN,
                                       currency='RUB',
                                       prices=prices,
-                                      photo_url="http://kirian.su/test/VPW.jpg",
+                                      photo_url="http://vpw.kirian.su/VPW.png",
                                       need_email=True,
                                       send_email_to_provider=True)
     #Output Message(invoice), pay_operations[config_contin_(time)_(tariff key)_(config id)] := ""
@@ -879,14 +871,7 @@ async def  callback_query(c):
         cfg_id = await db.execute("INSERT INTO configs (user_id, location_id) VALUES (%s, %s)",
                                   (u['id'], int(loc_id)))
         cfg_name = f"{location}_{c.from_user.username}_{cfg_id}"
-        subprocess.run(['python3', 'awgcfg.py', '-a', cfg_name])
-        subprocess.run(['python3', 'awgcfg.py', '-c', '--dir', str(CONF_DIR)])
-        subprocess.run(['python3', 'awgcfg.py', '-q', '--dir', str(CONF_DIR)])
-        subprocess.run(['systemctl', 'restart', 'awg-quick@awg0.service'])
-        await db.execute("UPDATE configs SET code_name=%s where id=%s",(cfg_name, cfg_id))
-        await db.execute('UPDATE `users` SET configs_count=configs_count + 1 WHERE id=%s', (u['id'],))
-        await db.execute("UPDATE configs SET valid_until=%s, status='active' WHERE id = %s",
-                         ((str(dt.now()+(await to_td("15min"))).split("."))[0], cfg_id))
+        await gen_key(cfg_name, cfg_id, "15min", u)
         text = await tr("CONFIG_HELP", u['locale'])
         await bot.send_message(text = text,
                                chat_id = c.message.chat.id)
@@ -901,6 +886,18 @@ async def  callback_query(c):
     elif c.data.startswith("delete_mess"):
         return await bot.delete_message(c.message.chat.id, c.message.id)
 
+
+async def gen_key(cfg_name, cfg_id, tariff_k, u):
+    subprocess.run(['python3', 'awgcfg.py', '-a', cfg_name])
+    subprocess.run(['python3', 'awgcfg.py', '-c', '--dir', str(CONF_DIR)])
+    subprocess.run(['python3', 'awgcfg.py', '-q', '--dir', str(CONF_DIR)])
+    subprocess.run(['systemctl', 'restart', 'awg-quick@awg0.service'])
+    await db.execute("UPDATE configs SET code_name=%s where id=%s",(cfg_name, cfg_id))
+    await db.execute('UPDATE `users` SET configs_count=configs_count + 1 WHERE id=%s', (u['id'],))
+    await db.execute(
+        "UPDATE configs SET valid_until=%s, status='active' WHERE id = %s",
+        ((str(dt.now()+(await to_td(tariff_k))).split("."))[0], cfg_id)
+    )
 
 async def to_td(s: str) -> td:
     s = s.strip().lower()
@@ -942,8 +939,6 @@ async def clear(u_id):
         del(balance_depos[balance_depos.index(u_id)])
     if u_id in referals:
         del(referals[referals.index(u_id)])
-
-
 
 #daily check configs 
 async def daily_check(x):
