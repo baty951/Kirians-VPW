@@ -28,6 +28,7 @@ TRANSLATIONS = {
             "🔑 <b>Твоих ключей:</b> {count} шт."
         ),
         "MY_CFGS": "🔑 Мои ключи",
+        "FREE_PRESENT": "🎁 Бесплатный ключ",
         "ACCOUNT": "👤 Личный кабинет",
         "INFO": "ℹ️ Информация",
         "BUY_CFG": "🛒 Купить ключ",
@@ -78,19 +79,23 @@ TRANSLATIONS = {
             "💰 <b>Ваш баланс:</b> {balance}₽"
         ),
 
+        "INVOICE_DEPOSIT_TITLE" : "💳 Пополнение баланса бота на {amount}₽ для {name}",
+        "INVOICE_DEPOSIT_DESC" : "{amount}₽ будут зачислены на внутренний баланс бота {name}({id}) и могут быть использованы для покупки ключей доступа и других сервисов.",
+        "INVOCE_DEPOSIT_DESC" : "Пополнение внутреннего баланса {name}({id}) на {summ}руб для оплаты цифровых услуг",
         "INVOICE_CONFIG_TITLE" : "🔑 Покупка ключа доступа на {duration}",
-        "INVOICE_CONFIG_DESC" : "Оплата цифрового ключа для защищённого подключения через сервер {location} на {duration}. После оплаты вы получите файл и QR-код для подключения. (test pay card: 2200 0000 0000 0004 11/11 111)",
-        "INVOICE_DEPOSIT_TITLE" : "💳 Пополнение баланса бота на {amount}₽",
-        "INVOICE_DEPOSIT_DESC" : "{amount}₽ будут зачислены на внутренний баланс бота и могут быть использованы для покупки ключей доступа и других сервисов.",
+        "INVOICE_CONFIG_DESC" : "Оплата цифрового ключа для защищённого подключения через сервер {location} на {duration}. После оплаты вы получите файл и QR-код для подключения.",
         "INVOICE_EXTEND_TITLE": "🔁 Продление ключа {name} на {duration}",
         "INVOICE_EXTEND_DESC": "Оплата продления срока действия твоего цифрового ключа {name} на {duration}. После оплаты время действия будет увеличено автоматически.",
         "CONFIG_EXTEND_SUCCESS": "✅ Ключ <b>{name}</b> был успешно продлён.",
         "CONFIG_VALID_UNTIL": "⏰ Действителен до: {date} (GMT+3)",
         
+        "CONFIG_EXPIRES": "⏳ Срок действия ключа <code>{code_name}</code> истекает в течение двух суток.",
+        
         "CONFIG_INFO" : "Название: {name}\nОписание: {description}\nДействителен до: {valid_until}",
         
         "CONFIG_SETTINGS_PROMPT": "⚙️ Что ты хочешь изменить в ключе <b>{config}</b>?",
-
+        
+        "ASK_CONFIG_NAME": "✏️ Введи новое название ключа (макс. 32 символа):",
         "CHANGING_CONFIG_NAME": (
             "✏️ Ты хочешь изменить название ключа:\n"
             "• <b>Сейчас:</b> {old_name}\n"
@@ -105,6 +110,7 @@ TRANSLATIONS = {
             "<b>{text}</b>"
         ),
         
+        "ASK_CONFIG_DESC": "✏️ Введи новое описание ключа (макс. 255 символов):",
         "CHANGING_CONFIG_DESC": (
             "✏️ Ты хочешь изменить описание ключа:\n"
             "• <b>Сейчас:</b> {old_desc}\n"
@@ -149,7 +155,8 @@ TRANSLATIONS = {
         "ASK_DEPOSIT_SUM": "💳 Напиши сумму пополнения в рублях (от 80₽):",
         "DEPOSIT_CANCELED": "❌ Пополнение отменено.",
         "BALANCE_DEPOSIT_SUCCESS": "✅ Баланс успешно пополнен на {amount}₽.",
-        "BALANCE" : "Баланс(-5%)",
+        "BALANCE_PAY" : "💰Баланс(-10%)",
+        "BALANCE" : "💰Баланс",
 
         # ==== Информация о боте / прочее ====
         "ACCOUNT_MENU_TITLE": "👤 Личный кабинет",
@@ -202,6 +209,7 @@ TRANSLATIONS = {
             "🗂 <b>Configs count:</b> {count}"
         ),
         "MY_CFGS": "🔑 My configs",
+        "FREE_PRESENT": "🎁 Free key",
         "ACCOUNT": "👤 Account",
         "INFO": "ℹ️ Information",
         "BUY_CFG": "🛒 Buy config",
@@ -252,17 +260,19 @@ TRANSLATIONS = {
             "💰 <b>Your balance:</b> {balance}rub"
         ),
         
+        "INVOICE_DEPOSIT_TITLE" : "💳 Bot balance top-up: {amount}rub for {name}",
+        "INVOICE_DEPOSIT_DESC" : "{amount}rub will be credited to {name}({id}) in-bot balance and can be used to buy access keys and other services.",
         "INVOICE_CONFIG_TITLE" : "🔑 Access key purchase for {duration}",
-        "INVOICE_CONFIG_DESC" : "Payment for a digital access key via server {location} for {duration}. After payment you will receive a file and a QR code to connect.(test pay card: 2200 0000 0000 0004 11/11 111)",
-        "INVOICE_DEPOSIT_TITLE" : "💳 Bot balance top-up: {amount}rub",
-        "INVOICE_DEPOSIT_DESC" : "{amount}rub will be credited to your in-bot balance and can be used to buy access keys and other services.",
+        "INVOICE_CONFIG_DESC" : "Payment for a digital access key via server {location} for {duration}. After payment you will receive a file and a QR code to connect.",
         "INVOICE_EXTEND_TITLE": "🔁 Extend key {name} for {duration}",
         "INVOICE_EXTEND_DESC": "Payment for extending the validity of your digital access key {name} for {duration}. After payment the validity period will be extended automatically.",
         "CONFIG_EXTEND_SUCCESS" : "✅ Config <b>{name}</b> was successfully extended.",
         "CONFIG_VALID_UNTIL": "⏰ Valid until: {date} (GMT+3)",
+        
+        "CONFIG_EXPIRES": "⏳ The validity period of your key <code>{code_name}</code> expires within two days.",
 
         "CONFIG_SETTINGS_PROMPT": "⚙️ What do you want to change in config <b>{config}</b>?",
-
+        "ASK_CONFIG_NAME": "✏️ Enter new config name (max. 32 characters):",
         "CHANGING_CONFIG_NAME": (
             "✏️ You want to change the config name:\n"
             "• <b>Current:</b> {old_name}\n"
@@ -270,6 +280,14 @@ TRANSLATIONS = {
             "Confirm change?"
         ),
         "TOO_LONG_NAME": "⚠️ Name is too long! Maximum length is 32 characters.",
+        "CONFIG_NAME_CHANGED": (
+            "✅ Config name\n"
+            "<code>{code_name}</code>\n"
+            "was successfully changed to:\n"
+            "<b>{text}</b>"
+        ),
+        
+        "ASK_CONFIG_DESC": "✏️ Enter new config description (max. 255 characters):",
         "CHANGING_CONFIG_DESC": (
             "✏️ You want to change the config description:\n"
             "• <b>Current:</b> {old_desc}\n"
@@ -281,13 +299,6 @@ TRANSLATIONS = {
             "✏️ You want to set the following config description:\n"
             "{new_desc}\n\n"
             "Confirm?"
-        ),
-
-        "CONFIG_NAME_CHANGED": (
-            "✅ Config name\n"
-            "<code>{code_name}</code>\n"
-            "was successfully changed to:\n"
-            "<b>{text}</b>"
         ),
         "CONFIG_DESC_CHANGED": (
             "✅ Config description was successfully changed to:\n"
