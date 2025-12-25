@@ -3,7 +3,7 @@ DEFAULT_LOCALE = 'en'
 TRANSLATIONS = {
     "ru": {
         # ==== Базовые сообщения / команды ====
-        "START_MESS": "👋 Привет! Пиши /menu, чтобы начать работу.",
+        "START_MESS": "👋 Привет! Пиши /menu, чтобы начать работу. Перед покупкой рекомендую проверить работоспособность бесплатного ключа.",
         "NOT_USER": "⚠️ Ты не зарегистрирован в системе. Напиши /start для регистрации.",
 
         "HELP": (
@@ -89,7 +89,8 @@ TRANSLATIONS = {
         "CONFIG_EXTEND_SUCCESS": "✅ Ключ <b>{name}</b> был успешно продлён.",
         "CONFIG_VALID_UNTIL": "⏰ Действителен до: {date} (GMT+3)",
         
-        "CONFIG_EXPIRES": "⏳ Срок действия ключа <code>{code_name}</code> истекает в течение двух суток.",
+        "CONFIG_EXPIRES": "⏳ Срок действия ключа {code_name} истекает в течение двух суток.",
+        "CONFIGS_EXPIRES": "⏳ Срок действия ключей {code_name} истекает в течение двух суток.",
         
         "CONFIG_INFO" : "Название: {name}\nОписание: {description}\nДействителен до: {valid_until}",
         
@@ -161,13 +162,31 @@ TRANSLATIONS = {
         # ==== Информация о боте / прочее ====
         "ACCOUNT_MENU_TITLE": "👤 Личный кабинет",
         "BOT_CHANNEL": "📢 Канал бота",
-        "BOT_INFO": ("🔐 Kirians-VPW — бот для управления безопасным доступом к интернет-сервисам.\n"
-                     "Он помогает:\n\n"
-                     "• получать и продлевать цифровые ключи доступа 🗝\n"
-                     "• подключаться к удалённым серверам через удобные приложения 📱💻\n"
-                     "• использовать онлайн-сервисы, которые могут быть недоступны из вашего региона 🌍\n\n"
-                     "Все ключи хранятся в твоём личном кабинете — ты в любой момент можешь скачать файл, отсканировать QR-код или продлить время действия ключа."),
-
+        "BOT_SITE" : "🌐 Сайт",
+        "BOT_INFO": (
+            "🔐 <b>Kirians-VPW</b> — бот для управления цифровыми ключами доступа к интернет-сервисам.\n\n"
+            "С его помощью ты можешь:\n\n"
+            "• получать и продлевать цифровые ключи доступа 🗝\n"
+            "• подключаться к удалённым серверам через удобные приложения 📱💻\n"
+            "• пользоваться онлайн-сервисами, которые могут быть недоступны из твоего региона 🌍\n\n"
+            "📂 Все ключи хранятся в твоём личном кабинете — ты в любой момент можешь:\n"
+            "• скачать конфигурационный файл\n"
+            "• отсканировать QR-код\n"
+            "• продлить срок действия ключа\n\n"
+            "<b>Поддерживаемые приложения</b>\n"
+            "📱 <b>Android:</b> "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.vpn&pcampaignid=web_share'>AmneziaVPN</a> · "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.awg&pcampaignid=web_share'>AmneziaWG</a>\n"
+            "🍏 <b>Apple:</b> "
+            "<a href='https://apps.apple.com/us/app/amneziavpn/id1600529900'>AmneziaVPN</a> · "
+            "<a href='https://apps.apple.com/us/app/amneziawg/id6478942365'>AmneziaWG</a>\n"
+            "💻 <b>Windows:</b> "
+            "<a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN\n\n</a>"
+            "⚠️ <b>Важно</b>\n\n"
+            "Один цифровой ключ предназначен для <b>одного активного подключения</b>.\n"
+            "Нельзя использовать один и тот же ключ одновременно на нескольких устройствах.\n\n"
+            "При этом ты можешь подключаться с разных устройств <b>поочерёдно</b> — просто отключайся на одном устройстве перед подключением на другом."
+        ),
         "PRECHECKOUT_ERROR": "⚠️ Ошибка. Попробуй ещё раз или напиши в группу бота.",
         "MIN" : "минут",
         "H" : "",
@@ -184,7 +203,7 @@ TRANSLATIONS = {
 
     "en": {
         # ==== Basic ====
-        "START_MESS": "👋 Hello! Send /menu to get started.",
+        "START_MESS": "👋 Hello! Send /menu to get started. Before buying, I recommend checking the functionality of the free key.",
         "NOT_USER": "⚠️ You are not registered. Send /start to register.",
 
         "HELP": (
@@ -269,7 +288,8 @@ TRANSLATIONS = {
         "CONFIG_EXTEND_SUCCESS" : "✅ Config <b>{name}</b> was successfully extended.",
         "CONFIG_VALID_UNTIL": "⏰ Valid until: {date} (GMT+3)",
         
-        "CONFIG_EXPIRES": "⏳ The validity period of your key <code>{code_name}</code> expires within two days.",
+        "CONFIG_EXPIRES": "⏳ The validity period of your key {code_name} expires within two days.",
+        "CONFIGS_EXPIRES": "⏳ The validity period of your keys {code_name} expires within two days.",
 
         "CONFIG_SETTINGS_PROMPT": "⚙️ What do you want to change in config <b>{config}</b>?",
         "ASK_CONFIG_NAME": "✏️ Enter new config name (max. 32 characters):",
@@ -336,12 +356,32 @@ TRANSLATIONS = {
         # ==== Bot info ====
         "ACCOUNT_MENU_TITLE": "👤 Account",
         "BOT_CHANNEL": "📢 Bot channel",
-        "BOT_INFO": ("🔐 Kirians-VPW is a bot for managing secure access to online services.\n"
-                     "It helps you:\n\n"
-                     "• get and extend digital access keys 🗝\n"
-                     "• connect to remote servers via simple apps 📱💻\n"
-                     "• use online services that may be unavailable from your region 🌍\n\n"
-                     "All your keys are stored in your personal cabinet — you can download the file, scan a QR code or extend the key at any time."),
+        "BOT_SITE" : "🌐 Website",
+        "BOT_INFO": (
+            "🔐 <b>Kirians-VPW</b> is a bot for managing digital access keys to online services.\n\n"
+            "With its help, you can:\n\n"
+            "• obtain and renew digital access keys 🗝\n"
+            "• connect to remote servers using convenient applications 📱💻\n"
+            "• access online services that may be unavailable in your region 🌍\n\n"
+            "📂 All your keys are stored in your personal dashboard — at any time you can:\n"
+            "• download a configuration file\n"
+            "• scan a QR code\n"
+            "• extend the validity period of a key\n\n"
+            "<b>Supported applications</b>\n"
+            "📱 <b>Android:</b> "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.vpn&pcampaignid=web_share'>AmneziaVPN</a> · "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.awg&pcampaignid=web_share'>AmneziaWG</a>\n"
+            "🍏 <b>Apple:</b> "
+            "<a href='https://apps.apple.com/us/app/amneziavpn/id1600529900'>AmneziaVPN</a> · "
+            "<a href='https://apps.apple.com/us/app/amneziawg/id6478942365'>AmneziaWG</a>\n"
+            "💻 <b>Windows:</b> "
+            "<a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN</a>\n\n"
+            "⚠️ <b>Important</b>\n\n"
+            "Each digital access key is intended for <b>one active connection</b>.\n"
+            "You cannot use the same key on multiple devices at the same time.\n\n"
+            "However, you may use the key on different devices <b>one at a time</b> — "
+            "just disconnect on one device before connecting on another."
+        ),
 
         "SOON_FUNC": "🚧 This function isn't available now. I may add it later...",
         "PRECHECKOUT_ERROR": "⚠️ Error. Try again or write to the bot's group.",

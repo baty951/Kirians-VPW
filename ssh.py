@@ -14,8 +14,8 @@ async def new_key(host: str, ssh_key: str, directory: str, cfg_name: str):
             cmd = (f"cd {directory}"
             f" && ./venv/bin/python3 awgcfg.py -a '{cfg_name}'"
             f" && ./venv/bin/python awgcfg.py -c -q --dir '{directory}configs'")
-            a = await conn.run(cmd)
-            a = await conn.run(f'systemctl restart awg-quick@awg0.service')
+            await conn.run(cmd)
+            await conn.run(f'systemctl restart awg-quick@awg0.service')
     except (OSError, asyncssh.Error) as exc:
         print(f'SSH connection failed: {exc}')
 

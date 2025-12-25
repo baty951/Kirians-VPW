@@ -26,6 +26,9 @@ CONF_DIR = os.getenv('CONF_DIR', './configs')
 REFERAL_ALPHABET = required_env('REFERAL_SYMBOLS')
 ADMIN = required_env("ADMIN_ID")
 cfg_tariff = {"1mo":8000}
+tariff_multip = {1:100, 2:100, 3:95, 4:95, 5:95, 6:90, 7:90, 8:90, 9:85, 10:85, 11:85
+                 }
+
 pay_operations = dict()
 conf_changes=dict()
 balance_depos=[]
@@ -50,14 +53,14 @@ async def send_welcome(m):
         )
         mess = m.text.split(maxsplit=1)
         ref = mess[1] if len(mess) > 1 else None
-        text = await tr("START_MESS", 'en')
+        text = await tr("START_MESS", 'ru')
         await bot.send_message(text=text,
                                chat_id=m.chat.id)
         if ref:
             user = await db.fetchone("SELECT first_name, id FROM users WHERE referal_code=%s", (ref,))
             if user and user['id']:
                 await db.execute("UPDATE users SET referal=%s WHERE id=%s", (ref, new_uid))
-                text = (await tr("REFERAL_BECAME", 'en')).format(user=user['first_name'])
+                text = (await tr("REFERAL_BECAME", 'ru')).format(user=user['first_name'])
                 await bot.send_message(text=text,
                                        chat_id=m.chat.id)
     else:
@@ -208,7 +211,21 @@ async def ssh_test(m):
         return await bot.send_message(text=text, chat_id=m.chat.id)
     else:
         #await ssh.del_key(host='localhost', ssh_key='/root/.ssh/id_ed25519_localhost', directory='/root/Kirians-VPW/', cfg_name='Poland,Raszyn_baty951_101')
-        await ssh.run_client(host='localhost', ssh_key='/root/.ssh/id_ed25519_localhost')
+        #await ssh.run_client(host='localhost', ssh_key='/root/.ssh/id_ed25519_localhost')
+        rows = await db.fetchall("SELECT c.code_name, c.location_id, l.host, l.key_path, l.directory FROM configs c JOIN locations l ON c.location_id = l.id")
+        for row in rows:
+            if row['location_id'] != 1: await ssh.get_key(row['host'], row['key_path'], row['directory'], row['code_name'])
+
+
+@bot.message_handler(commands=['key'])
+async def key(m):
+    u = await db.fetchone("SELECT id, admin_lvl, locale FROM users WHERE tg_user_id=%s", (m.from_user.id,))
+    if not u or u['admin_lvl'] < 1:
+        text = await tr("ACESS_ERR", 'en')
+        return await bot.send_message(text=text, chat_id=m.chat.id)
+    command = str(m.text.split(maxsplit=1)[1])
+    if command.startswith("gen"):
+        pass
 
 
 @bot.message_handler(commands=['gen_keys'])
@@ -252,6 +269,33 @@ async def configs_count(m):
             await bot.send_message(ADMIN, f"set configs_count for {user['username']}")
 
 
+@bot.message_handler(commands=['test'])
+async def test(m):
+    u = await db.fetchone("SELECT id, admin_lvl, locale FROM users WHERE tg_user_id=%s", (m.from_user.id,))
+    if not u or u['admin_lvl'] < 1:
+        text = await tr("ACESS_ERR", 'en')
+        return await bot.send_message(text=text, chat_id=m.chat.id)
+    else:
+        await bot.send_message(m.chat.id, m.text)
+
+
+@bot.message_handler(commands=['give'])
+async def give(m):
+    u = await db.fetchone("SELECT id, admin_lvl, locale FROM users WHERE tg_user_id=%s", (m.from_user.id,))
+    if not u or u['admin_lvl'] < 1:
+        text = await tr("ACESS_ERR", 'en')
+        return await bot.send_message(text=text, chat_id=m.chat.id)
+    else:
+        command, user, count = m.text.split(" ")[1:]
+        user = await db.fetchone("SELECT id, first_name, tg_user_id FROM users WHERE tg_user_id=%s OR username=%s", (user, user.lstrip("@")))
+        if user:
+            if command == "key":
+                for _ in range(int(count)):
+                    await gen_key("1mo", user, 1)
+            elif command == "balance":
+                await db.execute("UPDATE users SET balance = balance + %s WHERE id=%s", (int(count), user['id']))
+
+
 @bot.message_handler(chat_types=['private'], content_types=['text'])
 async def message_hand(m):
     u = await db.fetchone("SELECT id, first_name, locale, admin_lvl, tg_user_id, referal FROM users WHERE tg_user_id=%s", (m.from_user.id,))
@@ -284,8 +328,8 @@ async def message_hand(m):
                 cfg_id = conf_changes[u['id']].split("_")[1]
                 cfg = await db.fetchone("SELECT description FROM configs WHERE id=%s", (cfg_id,))
                 keyboard = BMarkup(keyboard=[
-                    BButton(text=await tr("YES", u['locale']), callback_data=f"change_descript_{cfg_id}"),
-                    BButton(text=await tr("CANCEL", u['locale']), callback_data="delete_mess")
+                    [BButton(text=await tr("YES", u['locale']), callback_data=f"change_descript_{cfg_id}")],
+                    [BButton(text=await tr("CANCEL", u['locale']), callback_data="delete_mess")]
                 ])
                 conf_changes[u['id']] = config_desc
                 if cfg['description']:
@@ -679,7 +723,7 @@ async def  callback_query(c):
         if u['balance'] >= (summ := int(summ)):
             await db.execute("UPDATE users SET balance = %s WHERE id = %s",
                              (u['balance'] - summ, u['id']))
-            location = await db.fetchone("SELECT name, host, key_path, directory FROM locations WHERE id=%s",(int(loc_id),))
+            location = await db.fetchone("SELECT id, name, host, key_path, directory FROM locations WHERE id=%s",(int(loc_id),))
             cfg_id = await db.execute("INSERT INTO configs (user_id, location_id) VALUES (%s, %s)",
                                       (u['id'], int(loc_id)))
             cfg_name = f"{location['name']}_{c.from_user.username}_{cfg_id}"
@@ -709,9 +753,9 @@ async def  callback_query(c):
             for x in cfg_tariff.keys()
         ]
         cfg = await db.fetchone("SELECT price FROM configs WHERE id = %s", (cfg_id,))
-        if cfg['price']:
+        if cfg:
             buttons = [
-                BButton(text = f"1mo({cfg['price']})", callback_data=f"choose_pay_extend_{cfg_id}_1mo")
+                BButton(text = f"1mo({cfg['price']}{await tr("RUB", u['locale'])})", callback_data=f"choose_pay_extend_{cfg_id}_1mo")
             ]
         buttons.append(BButton(text=await tr("BTN_SOON", u['locale']), callback_data="soon"))
         keyboard = BMarkup(row_width=2)
@@ -801,7 +845,8 @@ async def  callback_query(c):
 
     #Input _(config id) from cofig_menu / show_config_qr
     elif c.data.startswith("show_config_conf"):
-        await bot.delete_message(c.message.chat.id, c.message.id)
+        try: await bot.delete_message(c.message.chat.id, c.message.id)
+        except: pass
         cfg_id = c.data.split("_")[-1]
         cfg = await db.fetchone("SELECT name, code_name, location_id, valid_until FROM configs WHERE id = %s", (cfg_id,))
         if cfg['location_id'] != 1:
@@ -822,7 +867,8 @@ async def  callback_query(c):
 
     #Input _(config id) from cofig_menu / show_config_conf
     elif c.data.startswith("show_config_qr"):
-        await bot.delete_message(c.message.chat.id, c.message.id)
+        try: await bot.delete_message(c.message.chat.id, c.message.id)
+        except: pass
         cfg_id = c.data.split("_")[-1]
         cfg = await db.fetchone("SELECT name, code_name, location_id, valid_until FROM configs WHERE id = %s", (cfg_id,))
         if cfg['location_id'] != 1:
@@ -934,10 +980,11 @@ async def  callback_query(c):
 
     #Input
     elif c.data.startswith("menu_account"):
-        keyboard = BMarkup()
-        keyboard.row(BButton(text=await tr("REFERRAL_PROGRAM", u['locale']), callback_data="referal_menu"))
-        keyboard.row(BButton(text=await tr("BACK", u['locale']), callback_data="menu_main"))
-        text = await tr("menu_account_TITLE", u['locale'])
+        keyboard = BMarkup(keyboard=[
+            [BButton(text=await tr("REFERRAL_PROGRAM", u['locale']), callback_data="referal_menu")],
+            [BButton(text=await tr("BACK", u['locale']), callback_data="menu_main")]
+            ])
+        text = await tr("ACCOUNT_MENU_TITLE", u['locale'])
         await bot.edit_message_text(text=text,
                                     chat_id=c.message.chat.id,
                                     message_id=c.message.id,
@@ -987,6 +1034,7 @@ async def  callback_query(c):
     elif c.data.startswith("menu_information"):
         keyboard=BMarkup()
         keyboard.row(BButton(text=await tr("BOT_CHANNEL", u['locale']), url="https://t.me/Kirians_dev"))
+        keyboard.row(BButton(text=await tr("BOT_SITE", u['locale']), url="https://vpw.kirian.su"))
         keyboard.row(BButton(text=await tr("BACK", u['locale']), callback_data="menu_main"))
         text = await tr("BOT_INFO", u['locale'])
         await bot.edit_message_text(text=text,
@@ -1096,12 +1144,14 @@ async def day_chek():
     target = dt.now().replace(hour=12, minute=0, second=0, microsecond=0) + (td(days=1) if dt.now().hour >= 12 else td())
     await asyncio.sleep((target - dt.now()).total_seconds())
     while True:
+        rows = await db.fetchall("SELECT u.id, u.tg_user_id, u.locale FROM users u JOIN configs c ON u.id = c.user_id WHERE c.status='active' AND c.valid_until > NOW() AND c.valid_until < CURDATE() + INTERVAL 2 DAY GROUP BY u.id")
         rows = await db.fetchall("SELECT c.id, c.user_id, c.code_name, c.name, DATEDIFF(c.valid_until, CURDATE()) as days_left FROM configs c WHERE c.status='active' AND c.valid_until > NOW() AND c.valid_until < CURDATE() + INTERVAL 2 DAY")
         for row in rows:
+            cfgs = await db.fetchall("SELECT name, code_name FROM configs WHERE user_id=%s AND status='active' AND valid_until > NOW() AND valid_until < CURDATE() + INTERVAL 2 DAY", (row['user_id'],))
+            cfg = f"{', '.join([cfg['name'] if cfg['name'] else ''.join(cfg['code_name'].split('_')[1:]) for cfg in cfgs])}"
             u = await db.fetchone("SELECT tg_user_id, locale FROM users WHERE id=%s", (row['user_id'],))
-            name = row['name'] if row['name'] else "".join(row['code_name'].split("_")[1:])
             if u:
-                text = (await tr("CONFIG_EXPIRES", u['locale'])).format(code_name=name)
+                text = (await tr("CONFIGS_EXPIRES" if len(cfgs) > 1 else "CONFIG_EXPIRES", u['locale'])).format(code_name=cfg)
                 try:
                     await bot.send_message(chat_id=u['tg_user_id'], text=text)
                 except:
