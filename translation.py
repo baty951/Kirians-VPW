@@ -1,11 +1,10 @@
-DEFAULT_LOCALE = 'en'
+DEFAULT_LOCALE = "en"
 
 TRANSLATIONS = {
     "ru": {
         # ==== Базовые сообщения / команды ====
         "START_MESS": "👋 Привет! Пиши /menu, чтобы начать работу. Перед покупкой рекомендую проверить работоспособность бесплатного ключа.",
         "NOT_USER": "⚠️ Ты не зарегистрирован в системе. Напиши /start для регистрации.",
-
         "HELP": (
             "🤖 <b>Я бот для управления ключами AmneziaVPN.</b>\n\n"
             "📌 <b>Доступные команды:</b>\n"
@@ -18,14 +17,15 @@ TRANSLATIONS = {
             "\n👨‍💻 <b>Команды администратора:</b>\n"
             "• /a — показать список активных оплат и изменений\n"
             "• /sendall &lt;text&gt; — отправить сообщение всем пользователям\n"
+            "• /give &lt;key|balance&gt; user &lt;count&gt; &lt;server(key)&gt; (&lt;time(key)&gt;) — отправить сообщение всем пользователям\n"
+            "• /sendto &lt;user&gt; &lt;text&gt; — отправить сообщение пользователю по ID\n"
+            "• /ssh &lt;getkey&gt; - получить все ssh ключи\n"
+            "• /sendall &lt;text&gt; - отправить сообщение всем пользователям\n"
         ),
-        
         "ACESS_ERR": "⛔ У вас нет доступа к этой команде.",
-
         # ==== Главное меню ====
         "MENU_MESS": (
-            "💰 <b>Баланс:</b> {balance}₽\n"
-            "🔑 <b>Твоих ключей:</b> {count} шт."
+            "💰 <b>Баланс:</b> {balance}₽\n🔑 <b>Твоих ключей:</b> {count} шт."
         ),
         "MY_CFGS": "🔑 Мои ключи",
         "FREE_PRESENT": "🎁 Бесплатный ключ",
@@ -35,7 +35,6 @@ TRANSLATIONS = {
         "DEPOSIT": "💳 Пополнить баланс",
         "LANG_CHANGE": "🌐 язык / language",
         "LANG_SET_SUCCESS": "✅ Язык успешно изменён.",
-
         # ==== Работа с ключами / оплата ====
         "CONFIG_HELP": (
             "✅ <b>Спасибо за оплату!</b>\n\n"
@@ -49,54 +48,93 @@ TRANSLATIONS = {
             "💻 <b>Windows:</b> "
             "<a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN</a>"
         ),
-
+        "FREE_CONFIG_HELP": (
+            "Вам выдан тестовый конфиг на 30 минут.\n"
+            "Чтобы использовать ключ, скачай любое из следующих приложений:\n\n"
+            "📱 <b>Android:</b> "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.vpn&pcampaignid=web_share'>AmneziaVPN</a> · "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.awg&pcampaignid=web_share'>AmneziaWG</a>\n"
+            "🍏 <b>Apple:</b> "
+            "<a href='https://apps.apple.com/us/app/amneziavpn/id1600529900'>AmneziaVPN</a> · "
+            "<a href='https://apps.apple.com/us/app/amneziawg/id6478942365'>AmneziaWG</a>\n"
+            "💻 <b>Windows:</b> "
+            "<a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN</a>\n\n"
+            "Болеше вариантов подключения конфигов можно найти в:\n меню ➡️ мои ключи ➡️ {name}"
+        ),
+        "VPN_HELP_TEXT": (
+            "🛡 <b>Как пользоваться ключами</b>\n\n"
+            "У тебя есть ключ — осталось добавить его в приложение.\n\n"
+            "✅ <b>Способы подключения:</b>\n"
+            "• <b>Файл конфигурации</b> (.conf) — скачай и импортируй в приложение\n"
+            "• <b>QR-код</b> — открой сканер внутри приложения и отсканируй\n\n"
+            "📌 <b>Рекомендуемые приложения:</b>\n\n"
+            "📱 <b>Android:</b> "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.vpn&pcampaignid=web_share'>AmneziaVPN</a> · "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.awg&pcampaignid=web_share'>AmneziaWG</a>\n"
+            "🍏 <b>Apple:</b> "
+            "<a href='https://apps.apple.com/us/app/amneziavpn/id1600529900'>AmneziaVPN</a> · "
+            "<a href='https://apps.apple.com/us/app/amneziawg/id6478942365'>AmneziaWG</a>\n"
+            "💻 <b>Windows:</b> "
+            "<a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN</a> · "
+            "<a href='https://github.com/amnezia-vpn/amneziawg-windows-client/releases'>AmneziaWG</a>\n\n"
+            "⚠️ <b>Важно:</b>\n"
+            "Один ключ = <b>одно активное подключение</b>.\n"
+            "Нельзя использовать один и тот же ключ одновременно на двух устройствах.\n"
+            "Но можно подключаться <b>по очереди</b> — просто отключайся на одном устройстве перед подключением на другом.\n\n"
+            "❓ Если что-то не получается — попробуй второй способ (QR ↔ файл) или напиши в поддержку."
+        ),
+        "CONFIG_LOCATION_CHANGED": "Готово! Мы сменили регион для вашего подключения 😊"
+        "Теперь ваш конфиг {name} работает на сервере: {location}.  "
+        "Осталось только переподключить ключ — ниже вы найдёте обновлённые ключи.",
+        "CONFIG_GENERATION": "⏳ Генерация ключа, подожди немного...",
         "CFG_DURATION": "⏱ Выбери длительность ключа:",
-
         "NO_CONFIGS": "📭 У тебя пока нет активных ключей.",
         "CHOOSE_CONFIG": "🔑 Выбери ключ из списка:",
-
         "CONFIG_MENU": (
             "📄 <b>Название:</b> {name}\n"
             "⏰ <b>Действителен до:</b> {valid_until}\n"
             "📝 <b>Описание:</b> {description}"
         ),
-
         "BTN_SHOW_QR": "🔳 Показать QR-код ключа",
         "BTN_GET_FILE": "📄 Получить файл ключа",
-        "BTN_EXTEND_CONFIG": "🔁 Продлить ключ",
+        "BTN_EXTEND_CONFIG": "💳 Продлить ключ",
         "BTN_EDIT_CONFIG": "⚙️ Изменить ключ",
-
+        "BTN_CONFIG_RESET": "♻️ Пересоздать ключ",
+        "BTN_CHANGE_LOCATION": "🌍 Сменить локацию сервера",
         "CHOOSE_LOCATION": "🌍 Выбери локацию:",
         "BTN_SOON": "🚧 Скоро...",
         "CHOOSE_CONFIG_TARIFF": "💳 Выбери тариф ключа:",
-
         "PAY_SUMMARY": (
-            "💵 <b>Сумма к оплате:</b> {amount}₽\n"
-            "💰 <b>Ваш баланс:</b> {balance}₽"
+            "💵 <b>Сумма к оплате:</b> {amount}₽\n💰 <b>Ваш баланс:</b> {balance}₽"
         ),
+        "CHOOSE_NEW_LOCATION": "🌍 Выбери новую локацию сервера для ключа {name}:",
         "PAY_FROM_BALANCE": (
-            "💵 <b>Сумма к оплате:</b> {amount}₽\n\n"
-            "💰 <b>Ваш баланс:</b> {balance}₽"
+            "💵 <b>Сумма к оплате:</b> {amount}₽\n\n💰 <b>Ваш баланс:</b> {balance}₽"
         ),
-
-        "INVOICE_DEPOSIT_TITLE" : "💳 Пополнение баланса бота на {amount}₽ для {name}",
-        "INVOICE_DEPOSIT_DESC" : "{amount}₽ будут зачислены на внутренний баланс бота {name}({id}) и могут быть использованы для покупки ключей доступа и других сервисов.",
-        "INVOCE_DEPOSIT_DESC" : "Пополнение внутреннего баланса {name}({id}) на {summ}руб для оплаты цифровых услуг",
-        "INVOICE_CONFIG_TITLE" : "🔑 Покупка ключа доступа на {duration}",
-        "INVOICE_CONFIG_DESC" : "Оплата цифрового ключа для защищённого подключения через сервер {location} на {duration}. После оплаты вы получите файл и QR-код для подключения.",
+        "PAY_CONFIGS_FROM_BALANCE": "продление конфигов на месяц\n {name}\n\n💵 <b>Сумма к оплате:</b> {amount}₽\n💰 <b>Ваш баланс:</b> {balance}₽",
+        "INVOICE_DEPOSIT_TITLE": "💳 Пополнение баланса бота на {amount}₽ для {name}",
+        "INVOICE_DEPOSIT_DESC": "{amount}₽ будут зачислены на внутренний баланс бота {name}({id}) и могут быть использованы для покупки ключей доступа и других сервисов.",
+        "INVOCE_DEPOSIT_DESC": "Пополнение внутреннего баланса {name}({id}) на {summ}руб для оплаты цифровых услуг",
+        "INVOICE_CONFIG_TITLE": "🔑 Покупка ключа доступа на {duration}",
+        "INVOICE_CONFIG_DESC": "Оплата цифрового ключа для защищённого подключения через сервер {location} на {duration}. После оплаты вы получите файл и QR-код для подключения.",
         "INVOICE_EXTEND_TITLE": "🔁 Продление ключа {name} на {duration}",
         "INVOICE_EXTEND_DESC": "Оплата продления срока действия твоего цифрового ключа {name} на {duration}. После оплаты время действия будет увеличено автоматически.",
         "CONFIG_EXTEND_SUCCESS": "✅ Ключ <b>{name}</b> был успешно продлён.",
+        "CONFIGS_EXTEND_SUCCESS": "✅ Ключи <b>{name}</b> были успешно продлены.",
         "CONFIG_VALID_UNTIL": "⏰ Действителен до: {date} (GMT+3)",
-        
-        "CONFIG_EXPIRES": "⏳ Срок действия ключа {code_name} истекает в течение двух суток.",
-        "CONFIGS_EXPIRES": "⏳ Срок действия ключей {code_name} истекает в течение двух суток.",
-        
-        "CONFIG_INFO" : "Название: {name}\nОписание: {description}\nДействителен до: {valid_until}",
-        
+        "CONFIGS_EXTEND": "🔁 Продлить конфиги",
+        "NO_CONFIGS_SELECTED": "⚠️ Не выбраны ключи для продления.",
+        "PROCEED_TO_PAY": "💳 Перейти к оплате",
+        "CHOOSE_CONFIGS_TO_EXTEND": "🔁 Выберите конфиги для продления\n(Временно только балансом)",
+        "CHOOSE_CONFIGS_TO_EXTEND_MANY": "🔁 Выберите конфиги для продления\n(при выборе 6+ конфигов оплата доступна только внутренним балансом)",
+        "CONFIGS_EXEND_SELECTED": "✅ Ключи {code_name} успешно продлены.",
+        "INSUFFICIENT_FUNDS": "⚠️ Недостаточно средств на балансе",
+        "CONFIG_EXPIRES": "⏳ Срок действия ключа <b>{name}</b> скоро истекает.",
+        "CONFIGS_EXPIRES": "⏳ Срок действия следующих ключей ключей скоро истекает:\n{name}",
+        "CONFIG_INFO": "Название: {name}\nОписание: {description}\nДействителен до: {valid_until}",
         "CONFIG_SETTINGS_PROMPT": "⚙️ Что ты хочешь изменить в ключе <b>{config}</b>?",
-        
         "ASK_CONFIG_NAME": "✏️ Введи новое название ключа (макс. 32 символа):",
+        "CONFIG_LOCATION_CHANGING": "⏳Меняем локацию, подожди немного...",
         "CHANGING_CONFIG_NAME": (
             "✏️ Ты хочешь изменить название ключа:\n"
             "• <b>Сейчас:</b> {old_name}\n"
@@ -110,7 +148,6 @@ TRANSLATIONS = {
             "успешно изменено на:\n"
             "<b>{text}</b>"
         ),
-        
         "ASK_CONFIG_DESC": "✏️ Введи новое описание ключа (макс. 255 символов):",
         "CHANGING_CONFIG_DESC": (
             "✏️ Ты хочешь изменить описание ключа:\n"
@@ -125,44 +162,37 @@ TRANSLATIONS = {
             "Подтвердить?"
         ),
         "CONFIG_DESC_CHANGED": (
-            "✅ Описание ключа успешно изменено на:\n"
-            "<b>{text}</b>"
+            "✅ Описание ключа успешно изменено на:\n<b>{text}</b>"
         ),
-
         "CONFIG_EXPIRED_DELETED": (
             "⏳ Срок действия твоего ключа <code>{code_name}</code> истёк, "
             "и он был удалён."
         ),
-
         # ==== Рефералка ====
         "REFERAL_BECAME": "🤝 Вы стали рефералом пользователя <b>{user}</b>.",
         "INPUT_REFERAL": "🔑 Введите реферальный код:",
-        "ALREADY_REFERAL" : "⚠️ Вы уже являетесь рефералом другого пользователя.",
+        "ALREADY_REFERAL": "⚠️ Вы уже являетесь рефералом другого пользователя.",
         "REFERAL_ERR": "⚠️ Такого кода не существует.",
-
         "REFERRAL_PROGRAM": "👥 Реферальная программа",
         "REFERRAL_MENU_TITLE": "👥 Рефералы",
         "REFERRAL_ENTER_CODE": "🔑 Введите реферальный код:",
-
         "BTN_MY_REF_CODE": "🧾 Мой реферальный код",
         "BTN_INPUT_REF_CODE": "✏️ Ввести реферальный код",
         "BTN_COPY_CODE": "📋 Скопировать код",
         "BTN_COPY_LINK": "🔗 Скопировать ссылку",
         "REF_CODE_TEXT": "🧾 Твой реферальный код:\n<code>{code}</code>",
-
         # ==== Баланс / пополнение ====
         "SEND_INT": "🔢 Отправь целое число.",
         "MIN_AMOUNT": "⚠️ Минимальная сумма — {min}₽.",
         "ASK_DEPOSIT_SUM": "💳 Напиши сумму пополнения в рублях (от 80₽):",
         "DEPOSIT_CANCELED": "❌ Пополнение отменено.",
         "BALANCE_DEPOSIT_SUCCESS": "✅ Баланс успешно пополнен на {amount}₽.",
-        "BALANCE_PAY" : "💰Баланс(-10%)",
-        "BALANCE" : "💰Баланс",
-
+        "BALANCE_PAY": "💰Баланс(-10%)",
+        "BALANCE": "💰Баланс",
         # ==== Информация о боте / прочее ====
         "ACCOUNT_MENU_TITLE": "👤 Личный кабинет",
         "BOT_CHANNEL": "📢 Канал бота",
-        "BOT_SITE" : "🌐 Сайт",
+        "BOT_SITE": "🌐 Сайт",
         "BOT_INFO": (
             "🔐 <b>Kirians-VPW</b> — бот для управления цифровыми ключами доступа к интернет-сервисам.\n\n"
             "С его помощью ты можешь:\n\n"
@@ -188,24 +218,24 @@ TRANSLATIONS = {
             "При этом ты можешь подключаться с разных устройств <b>поочерёдно</b> — просто отключайся на одном устройстве перед подключением на другом."
         ),
         "PRECHECKOUT_ERROR": "⚠️ Ошибка. Попробуй ещё раз или напиши в группу бота.",
-        "MIN" : "минут",
-        "H" : "",
-        "D" : "дней",
-        "M" : "месяц",
-
+        "SOON_FUNC": "🚧 Эта функция пока недоступна. Возможно, я добавлю её позже...(наверное)",
+        "VALID_UNTIL": "Действителен до",
+        "MIN": "минут",
+        "H": "",
+        "D": "дней",
+        "M": "месяц",
+        "MO": "мес",
         # ==== Кнопки-иконки ====
         "YES": "✅ Да",
         "CANCEL": "❌ Отмена",
         "BACK": "⬅️ Назад",
         "PAY": "💳 Оплатить",
-        "RUB": "₽"
+        "RUB": "₽",
     },
-
     "en": {
         # ==== Basic ====
         "START_MESS": "👋 Hello! Send /menu to get started. Before buying, I recommend checking the functionality of the free key.",
         "NOT_USER": "⚠️ You are not registered. Send /start to register.",
-
         "HELP": (
             "🤖 <b>I am a bot for managing AmneziaVPN keys.</b>\n\n"
             "📌 <b>Available commands:</b>\n"
@@ -219,13 +249,10 @@ TRANSLATIONS = {
             "• /a — show the list of active payments and changes\n"
             "• /sendall &lt;text&gt; — send a message to all users\n"
         ),
-        
         "ACESS_ERR": "⛔ You do not have access to this command.",
-
         # ==== Main menu ====
         "MENU_MESS": (
-            "💰 <b>Your balance:</b> {balance}rub\n"
-            "🗂 <b>Configs count:</b> {count}"
+            "💰 <b>Your balance:</b> {balance}rub\n🗂 <b>Configs count:</b> {count}"
         ),
         "MY_CFGS": "🔑 My configs",
         "FREE_PRESENT": "🎁 Free key",
@@ -235,7 +262,6 @@ TRANSLATIONS = {
         "DEPOSIT": "💳 deposit",
         "LANG_CHANGE": "🌐 язык / language",
         "LANG_SET_SUCCESS": "✅ Language successfully changed.",
-
         # ==== Configs / payments ====
         "CONFIG_HELP": (
             "✅ <b>Thank you for your payment!</b>\n\n"
@@ -249,27 +275,48 @@ TRANSLATIONS = {
             "💻 <b>Windows:</b> "
             "<a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN</a>"
         ),
-
+        "VPN_HELP_TEXT": (
+            "🛡 <b>How to use your access keys</b>\n\n"
+            "You already have a key — now just add it to the app.\n\n"
+            "✅ <b>Connection methods:</b>\n"
+            "• <b>Configuration file</b> (.conf) — download it and import into the app\n"
+            "• <b>QR code</b> — open the scanner inside the app and scan it\n\n"
+            "📌 <b>Recommended applications:</b>\n\n"
+            "📱 <b>Android:</b> "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.vpn&pcampaignid=web_share'>AmneziaVPN</a> · "
+            "<a href='https://play.google.com/store/apps/details?id=org.amnezia.awg&pcampaignid=web_share'>AmneziaWG</a>\n"
+            "🍏 <b>Apple:</b> "
+            "<a href='https://apps.apple.com/us/app/amneziavpn/id1600529900'>AmneziaVPN</a> · "
+            "<a href='https://apps.apple.com/us/app/amneziawg/id6478942365'>AmneziaWG</a>\n"
+            "💻 <b>Windows:</b> "
+            "<a href='https://github.com/amnezia-vpn/amnezia-client/releases/download/4.8.2.3/AmneziaVPN_4.8.2.3_x64.exe'>AmneziaVPN</a> · "
+            "<a href='https://github.com/amnezia-vpn/amneziawg-windows-client/releases'>AmneziaWG</a>\n\n"
+            "⚠️ <b>Important:</b>\n"
+            "One key = <b>one active connection</b>.\n"
+            "You cannot use the same key on multiple devices at the same time.\n"
+            "However, you can connect <b>one device at a time</b> — just disconnect from one device before connecting on another.\n\n"
+            "❓ If something doesn’t work — try another method (QR ↔ file) or contact support."
+        ),
+        "CONFIG_LOCATION_CHANGED": "All set! We’ve changed the region for your config 😊"
+        "Your configuration {name} is now running on the server: {location}.  "
+        "All that’s left is to reconnect your key — you’ll find the updated keys below.",
+        "CONFIG_GENERATION": "⏳ Generating key, please wait...",
         "CFG_DURATION": "⏱ Choose key duration:",
-
         "NO_CONFIGS": "📭 You don't have any active configs yet.",
         "CHOOSE_CONFIG": "📂 Choose a config from the list:",
-
         "CONFIG_MENU": (
             "📄 <b>Name:</b> {name}\n"
             "⏰ <b>Valid until:</b> {valid_until}\n"
             "📝 <b>Description:</b> {description}"
         ),
-
         "BTN_SHOW_QR": "🔳 Show QR code",
         "BTN_GET_FILE": "📄 Get config file",
-        "BTN_EXTEND_CONFIG": "🔁 Extend config",
+        "BTN_EXTEND_CONFIG": "💳 Extend config",
         "BTN_EDIT_CONFIG": "⚙️ Edit config",
-
+        "BTN_CONFIG_RESET": "♻️ Reset config",
         "CHOOSE_LOCATION": "🌍 Choose location:",
         "BTN_SOON": "🚧 Soon...",
         "CHOOSE_CONFIG_TARIFF": "💳 Choose config tariff:",
-
         "PAY_SUMMARY": (
             "💵 <b>Payment amount:</b> {amount}rub\n"
             "💰 <b>Your balance:</b> {balance}rub"
@@ -278,19 +325,24 @@ TRANSLATIONS = {
             "💵 <b>Amount to pay:</b> {amount}rub\n\n"
             "💰 <b>Your balance:</b> {balance}rub"
         ),
-        
-        "INVOICE_DEPOSIT_TITLE" : "💳 Bot balance top-up: {amount}rub for {name}",
-        "INVOICE_DEPOSIT_DESC" : "{amount}rub will be credited to {name}({id}) in-bot balance and can be used to buy access keys and other services.",
-        "INVOICE_CONFIG_TITLE" : "🔑 Access key purchase for {duration}",
-        "INVOICE_CONFIG_DESC" : "Payment for a digital access key via server {location} for {duration}. After payment you will receive a file and a QR code to connect.",
+        "INVOICE_DEPOSIT_TITLE": "💳 Bot balance top-up: {amount}rub for {name}",
+        "INVOICE_DEPOSIT_DESC": "{amount}rub will be credited to {name}({id}) in-bot balance and can be used to buy access keys and other services.",
+        "INVOICE_CONFIG_TITLE": "🔑 Access key purchase for {duration}",
+        "INVOICE_CONFIG_DESC": "Payment for a digital access key via server {location} for {duration}. After payment you will receive a file and a QR code to connect.",
         "INVOICE_EXTEND_TITLE": "🔁 Extend key {name} for {duration}",
         "INVOICE_EXTEND_DESC": "Payment for extending the validity of your digital access key {name} for {duration}. After payment the validity period will be extended automatically.",
-        "CONFIG_EXTEND_SUCCESS" : "✅ Config <b>{name}</b> was successfully extended.",
+        "CONFIG_EXTEND_SUCCESS": "✅ Config <b>{name}</b> was successfully extended.",
+        "CONFIGS_EXTEND_SUCCESS": "✅ Configs <b>{name}</b> were successfully extended.",
         "CONFIG_VALID_UNTIL": "⏰ Valid until: {date} (GMT+3)",
-        
+        "CONFIGS_EXTEND": "🔁 Extend configs",
+        "PROCEED_TO_PAY": "💳 Proceed to pay",
+        "NO_CONFIGS_SELECTED": "⚠️ No configs selected.",
+        "CHOOSE_CONFIGS_TO_EXTEND": "🔁 Choose configs to extend:(payment only from internal balance)",
+        "CHOOSE_CONFIGS_TO_EXTEND_MANY": "🔁 Choose configs to extend\n(when choosing 6+ configs, payment is only available from internal balance)",
+        "CONFIGS_EXEND_SELECTED": "✅ Keys {code_name} successfully extended.",
+        "INSUFFICIENT_FUNDS": "⚠️ Insufficient funds",
         "CONFIG_EXPIRES": "⏳ The validity period of your key {code_name} expires within two days.",
         "CONFIGS_EXPIRES": "⏳ The validity period of your keys {code_name} expires within two days.",
-
         "CONFIG_SETTINGS_PROMPT": "⚙️ What do you want to change in config <b>{config}</b>?",
         "ASK_CONFIG_NAME": "✏️ Enter new config name (max. 32 characters):",
         "CHANGING_CONFIG_NAME": (
@@ -306,7 +358,6 @@ TRANSLATIONS = {
             "was successfully changed to:\n"
             "<b>{text}</b>"
         ),
-        
         "ASK_CONFIG_DESC": "✏️ Enter new config description (max. 255 characters):",
         "CHANGING_CONFIG_DESC": (
             "✏️ You want to change the config description:\n"
@@ -321,42 +372,35 @@ TRANSLATIONS = {
             "Confirm?"
         ),
         "CONFIG_DESC_CHANGED": (
-            "✅ Config description was successfully changed to:\n"
-            "<b>{text}</b>"
+            "✅ Config description was successfully changed to:\n<b>{text}</b>"
         ),
-
         "CONFIG_EXPIRED_DELETED": (
             "⏳ The validity period of your config <code>{code_name}</code> has expired "
             "and it was deleted."
         ),
-
         # ==== Referrals ====
         "REFERAL_BECAME": "🤝 You are now {user}'s referral.",
         "INPUT_REFERAL": "🔑 Enter referral code:",
         "REFERAL_ERR": "⚠️ You are already a referral of another user or this code does not exist.",
-
         "REFERRAL_PROGRAM": "👥 Referral program",
         "REFERRAL_MENU_TITLE": "👥 Referrals",
         "REFERRAL_ENTER_CODE": "🔑 Enter referral code:",
-
         "BTN_MY_REF_CODE": "🧾 My referral code",
         "BTN_INPUT_REF_CODE": "✏️ Enter referral code",
         "BTN_COPY_CODE": "📋 Copy code",
         "BTN_COPY_LINK": "🔗 Copy link",
         "REF_CODE_TEXT": "🧾 Your referral code:\n<code>{code}</code>",
-
         # ==== Balance ====
         "SEND_INT": "🔢 Send an integer number.",
         "MIN_AMOUNT": "⚠️ Minimum amount — {min}rub.",
         "ASK_DEPOSIT_SUM": "💳 Send deposit amount in rubles (from 80 rub):",
         "DEPOSIT_CANCELED": "❌ Deposit cancelled.",
         "BALANCE_DEPOSIT_SUCCESS": "✅ Your balance has been credited with {amount}rub.",
-        "BALANCE" : "Balance(-5%)",
-
+        "BALANCE": "Balance(-5%)",
         # ==== Bot info ====
         "ACCOUNT_MENU_TITLE": "👤 Account",
         "BOT_CHANNEL": "📢 Bot channel",
-        "BOT_SITE" : "🌐 Website",
+        "BOT_SITE": "🌐 Website",
         "BOT_INFO": (
             "🔐 <b>Kirians-VPW</b> is a bot for managing digital access keys to online services.\n\n"
             "With its help, you can:\n\n"
@@ -382,24 +426,22 @@ TRANSLATIONS = {
             "However, you may use the key on different devices <b>one at a time</b> — "
             "just disconnect on one device before connecting on another."
         ),
-
         "SOON_FUNC": "🚧 This function isn't available now. I may add it later...",
         "PRECHECKOUT_ERROR": "⚠️ Error. Try again or write to the bot's group.",
-        "MIN" : "minutes",
-        "H" : "",
-        "D" : "days",
-        "M" : "month",
-
+        "MIN": "minutes",
+        "H": "",
+        "D": "days",
+        "M": "month",
+        "MO": "mo",
         # ==== Buttons ====
         "YES": "✅ Yes",
         "CANCEL": "❌ Cancel",
         "BACK": "⬅️ Back",
         "Оплатить": "💳 Pay",
         "Отмена": "❌ Cancel",
-        "RUB": "rub"
+        "RUB": "rub",
     },
 }
-
 
 
 async def tr(words: str, locale: str | None = None) -> str:

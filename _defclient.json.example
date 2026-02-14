@@ -1,0 +1,19 @@
+{
+    "containers": [
+        {
+            "awg": {
+                "H1": "<H1>", "H2": "<H2>", "H3": "<H3>", "H4": "<H4>", "Jc": "<JC>", "Jmax": "<JMAX>", "Jmin": "<JMIN>",
+                "S1": "<S1>", "S2": "<S2>",
+                "last_config": "{\n    \"H1\": \"<H1>\",\n    \"H2\": \"<H2>\",\n    \"H3\": \"<H3>\",\n    \"H4\": \"<H4>\", \n    \"Jc\": \"<JC>\", \n    \"Jmax\": \"<JMAX>\",\n    \"Jmin\": \"<JMIN>\", \n    \"S1\": \"<S1>\", \n    \"S2\": \"<S2>\",\n    \"allowed_ips\": [\n        \"0.0.0.0/0\", \n        \"::/0\"\n    ],\n    \"clientId\": \"<CLIENT_PUBLIC_KEY>\",\n    \"client_ip\": \"<CLIENT_TUNNEL_IP>\",\n    \"client_priv_key\": \"<CLIENT_PRIVATE_KEY>\",\n    \"client_pub_key\": \"<CLIENT_PUBLIC_KEY>\",\n    \"config\": \"[Interface]\\nAddress = <CLIENT_TUNNEL_IP>\\nDNS = $PRIMARY_DNS, $SECONDARY_DNS\\nPrivateKey = <CLIENT_PRIVATE_KEY>\\nJc = <JC>\\nJmin = <JMIN>\\nJmax = <JMAX>\\nS1 = <S1>\\nS2 = <S2>\\nH1 = <H1>\\nH2 = <H2>\\nH3 = <H3>\\nH4 = <H4>\\n\\n[Peer]\\nPublicKey = <SERVER_PUBLIC_KEY>\\nAllowedIPs = 0.0.0.0/0, ::/0\\nEndpoint = IP:<SERVER_PORT>\\nPersistentKeepalive = 60\\n\",\n    \"hostName\": \"IP\",\n    \"mtu\": \"1376\",\n    \"persistent_keep_alive\": \"60\",\n    \"port\": <SERVER_PORT>,\n    \"server_pub_key\": \"<SERVER_PUBLIC_KEY>\"\n}\n",
+                "port": "<SERVER_PORT>",
+                "transport_proto": "udp"
+            },
+            "container": "amnezia-awg"
+        }
+    ],
+    "defaultContainer": "amnezia-awg",
+    "description": "DESCRIPTION",
+    "dns1": "8.8.8.8",
+    "dns2": "1.0.0.1",
+    "hostName": "IP"
+}

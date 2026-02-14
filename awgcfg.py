@@ -9,15 +9,20 @@ import subprocess
 import optparse
 import random
 import datetime
+import json
+import base64
+import zlib
 
 g_main_config_src = '.main.config'
 g_main_config_fn = None
 g_main_config_type = None
 
 g_defclient_config_fn = "_defclient.config"
+g_defclient_json_fn = "_defclient.json"
 
 parser = optparse.OptionParser("usage: %prog [options]")
 parser.add_option("-t", "--tmpcfg", dest="tmpcfg", default = g_defclient_config_fn)
+parser.add_option("-j", "--json", dest="tmpjsn", default = g_defclient_json_fn)
 parser.add_option("-c", "--conf", dest="confgen", action="store_true", default = False)
 parser.add_option("-q", "--qrcode", dest="qrcode", action="store_true", default = False)
 parser.add_option("-a", "--add", dest="addcl", default = "")
@@ -76,6 +81,22 @@ Endpoint = <SERVER_ADDR>:<SERVER_PORT>
 PersistentKeepalive = 60
 PublicKey = <SERVER_PUBLIC_KEY>
 """
+
+def encode_config(config):
+    """Encodes a JSON configuration into a vpn:// prefixed string."""
+    # Use indent=4 to preserve indentation
+    json_str = json.dumps(config, indent=4).encode() 
+
+    # Compress data using zlib
+    compressed_data = zlib.compress(json_str)
+
+    # Add a 4-byte header with the original data length in big-endian format
+    original_data_len = len(json_str)
+    header = original_data_len.to_bytes(4, byteorder='big')
+    
+    # Combine header and compressed data, then encode with Base64
+    encoded_data = base64.urlsafe_b64encode(header + compressed_data).decode().rstrip("=")
+    return f"vpn://{encoded_data}"
 
 class IPAddr():
     def __init__(self, ipaddr = None):
@@ -617,14 +638,21 @@ if opt.confgen:
 
     with open(opt.tmpcfg, 'r') as file:
         tmpcfg = file.read()
-
+    with open(opt.tmpjsn, 'r') as file:
+        tmpjsn = json.dumps(json.load(file), ensure_ascii=False)
+        
     flst = glob.glob("*.conf")
     for fn in flst:
         if fn.endswith('awg0.conf'):
             continue
         if os.path.exists(fn):
             os.remove(fn)
-
+    
+    flst = glob.glob("*.txt")
+    for fn in flst:
+        if os.path.exists(fn):
+            os.remove(fn)
+    
     flst = glob.glob("*.png")
     for fn in flst:
         if os.path.exists(fn):
@@ -658,6 +686,25 @@ if opt.confgen:
         fn = f'{peer_name}.conf'
         with open(opt.dir+"/"+fn, 'w', newline = '\n') as file:
             file.write(out)
+        jsn = tmpjsn[:]
+        jsn = jsn.replace('<CLIENT_PRIVATE_KEY>', peer['PrivateKey'])
+        jsn = jsn.replace('<CLIENT_PUBLIC_KEY>', peer['PublicKey'])
+        jsn = jsn.replace('<CLIENT_TUNNEL_IP>', peer['AllowedIPs'])
+        jsn = jsn.replace('<JC>', str(jc))
+        jsn = jsn.replace('<JMIN>', str(jmin))
+        jsn = jsn.replace('<JMAX>', str(jmax))
+        jsn = jsn.replace('<S1>', srv['S1'])
+        jsn = jsn.replace('<S2>', srv['S2'])
+        jsn = jsn.replace('<H1>', srv['H1'])
+        jsn = jsn.replace('<H2>', srv['H2'])
+        jsn = jsn.replace('<H3>', srv['H3'])
+        jsn = jsn.replace('<H4>', srv['H4'])
+        jsn = jsn.replace('<SERVER_PORT>', srv['ListenPort'])
+        jsn = jsn.replace('<SERVER_PUBLIC_KEY>', srv['PublicKey'])
+        fn = f'{peer_name}.txt'
+        with open(opt.dir+"/"+fn, 'w', newline = '\n', encoding='utf-8') as file:
+            file.write(encode_config(json.loads(jsn)))
+        
 
 if opt.qrcode:
     print('Generate QR codes...')
@@ -681,5 +728,7 @@ if opt.qrcode:
         name = os.path.splitext(fn)[0]
         img = qrcode.make(conf)
         img.save(f'{name}.png')
+
+
 
 print('===== OK =====')

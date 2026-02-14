@@ -5,16 +5,21 @@ from dotenv import load_dotenv
 
 POOL: aiomysql.Pool | None = None
 
-async def init_pool() -> aiomysql.Pool:
+async def init_pool(host, port, user, passwd, table) -> aiomysql.Pool:
     global POOL
     if POOL:
         return POOL
+    host = host or os.getenv("DB_HOST", "127.0.0.1")
+    port = port or int(os.getenv("DB_PORT", "3306"))
+    user = user or os.getenv("DB_USER")
+    passwd = passwd or os.getenv("DB_PASS")
+    table = table or os.getenv("DB_TABLE")
     POOL = await aiomysql.create_pool(
-        host=os.getenv("DB_HOST", "127.0.0.1"),
-        port=int(os.getenv("DB_PORT", "3306")),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASS"),
-        db=os.getenv("DB_NAME"),
+        host=host,
+        port=port,
+        user=user,
+        password=passwd,
+        db=table,
         minsize=1, maxsize=10, autocommit=True, charset="utf8mb4"
     )
     return POOL
