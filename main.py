@@ -8,14 +8,12 @@ from datetime import timedelta as td
 from dotenv import load_dotenv
 from telebot import types
 from telebot.async_telebot import AsyncTeleBot
-from telebot.types import InlineKeyboardButton as BButton
-from telebot.types import InlineKeyboardMarkup as BMarkup
+from telebot.types import InlineKeyboardButton as KButton
+from telebot.types import InlineKeyboardMarkup as KMarkup
 from telebot.types import Message
 
 import db
 import ssh
-
-from redis_client import init_redis, close_redis
 from translation import tr
 
 # Load configuration
@@ -53,7 +51,7 @@ db_host = os.getenv("DB_HOST")
 db_port = int(os.getenv("DB_PORT"))  # type: ignore
 db_user = os.getenv("DB_USER")
 db_pass = os.getenv("DB_PASS")
-db_table = os.getenv("DB_TABLE")
+db_name = os.getenv("DB_NAME")
 
 pay_operations = dict()
 conf_changes = dict()
@@ -132,35 +130,35 @@ async def send_menu(m):
         text = await tr("NOT_USER", "en")
         return await bot.send_message(text=text, chat_id=m.chat.id)
     else:
-        keyboard = BMarkup()
+        keyboard = KMarkup()
         keyboard.row(
-            BButton(text=await tr("MY_CFGS", u["locale"]), callback_data="menu_cfg")
+            KButton(text=await tr("MY_CFGS", u["locale"]), callback_data="menu_cfg")
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("FREE_PRESENT", u["locale"]),
                 callback_data="choose_location_free",
             )
         )
         keyboard.row(
-            BButton(text=await tr("ACCOUNT", u["locale"]), callback_data="menu_account")
+            KButton(text=await tr("ACCOUNT", u["locale"]), callback_data="menu_account")
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("INFO", u["locale"]), callback_data="menu_information"
             )
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BUY_CFG", u["locale"]),
                 callback_data="choose_location_buy",
             )
         )
         keyboard.row(
-            BButton(text=await tr("DEPOSIT", u["locale"]), callback_data="baldeposit")
+            KButton(text=await tr("DEPOSIT", u["locale"]), callback_data="baldeposit")
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("LANG_CHANGE", u["locale"]),
                 callback_data="choose_language",
             )
@@ -462,16 +460,16 @@ async def message_hand(m):
                 cfg = await db.fetchone(
                     "SELECT name, code_name FROM configs WHERE id=%s", (cfg_id,)
                 )
-                keyboard = BMarkup(
+                keyboard = KMarkup(
                     keyboard=[
                         [
-                            BButton(
+                            KButton(
                                 text=await tr("YES", u["locale"]),
                                 callback_data=f"change_name_{cfg_id}",
                             )
                         ],
                         [
-                            BButton(
+                            KButton(
                                 text=await tr("CANCEL", u["locale"]),
                                 callback_data="delete_mess",
                             )
@@ -501,16 +499,16 @@ async def message_hand(m):
                 cfg = await db.fetchone(
                     "SELECT description FROM configs WHERE id=%s", (cfg_id,)
                 )
-                keyboard = BMarkup(
+                keyboard = KMarkup(
                     keyboard=[
                         [
-                            BButton(
+                            KButton(
                                 text=await tr("YES", u["locale"]),
                                 callback_data=f"change_descript_{cfg_id}",
                             )
                         ],
                         [
-                            BButton(
+                            KButton(
                                 text=await tr("CANCEL", u["locale"]),
                                 callback_data="delete_mess",
                             )
@@ -708,37 +706,37 @@ async def callback_query(c):
             text=text, callback_query_id=c.id, show_alert=True
         )
 
-    # Input from send_welcome() / BButton("back")
+    # Input from send_welcome() / KButton("back")
     elif c.data.startswith("menu_main"):
-        keyboard = BMarkup()
+        keyboard = KMarkup()
         keyboard.row(
-            BButton(text=await tr("MY_CFGS", u["locale"]), callback_data="menu_cfg")
+            KButton(text=await tr("MY_CFGS", u["locale"]), callback_data="menu_cfg")
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("FREE_PRESENT", u["locale"]),
                 callback_data="choose_location_free",
             )
         )
         keyboard.row(
-            BButton(text=await tr("ACCOUNT", u["locale"]), callback_data="menu_account")
+            KButton(text=await tr("ACCOUNT", u["locale"]), callback_data="menu_account")
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("INFO", u["locale"]), callback_data="menu_information"
             )
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BUY_CFG", u["locale"]),
                 callback_data="choose_location_buy",
             )
         )
         keyboard.row(
-            BButton(text=await tr("DEPOSIT", u["locale"]), callback_data="baldeposit")
+            KButton(text=await tr("DEPOSIT", u["locale"]), callback_data="baldeposit")
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("LANG_CHANGE", u["locale"]),
                 callback_data="choose_language",
             )
@@ -761,10 +759,10 @@ async def callback_query(c):
             (u["id"],),
         )
         if not (rows):
-            keyboard = BMarkup(
+            keyboard = KMarkup(
                 keyboard=[
                     [
-                        BButton(
+                        KButton(
                             text=await tr("BACK", u["locale"]),
                             callback_data="menu_main",
                         )
@@ -779,7 +777,7 @@ async def callback_query(c):
                 reply_markup=keyboard,
             )
         buttons = [
-            BButton(
+            KButton(
                 text=(
                     i["name"] if i["name"] else "".join(i["code_name"].split("_")[1:])
                 ),
@@ -787,21 +785,21 @@ async def callback_query(c):
             )
             for i in rows
         ]
-        # buttons.append(BButton(text=await tr("CONFIGS_EXTEND", u['locale']), callback_data="configs_extend"))
-        keyboard = BMarkup(
+        # buttons.append(KButton(text=await tr("CONFIGS_EXTEND", u['locale']), callback_data="configs_extend"))
+        keyboard = KMarkup(
             row_width=int(int(len(buttons)) / 8)
             if int(len(buttons)) / 8 == len(buttons)
             else (int(int(len(buttons)) / 8) + 1)
         )
         keyboard.add(*buttons)
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("CONFIGS_EXTEND", u["locale"]),
                 callback_data="cfgs:extnd",
             )
         )
         keyboard.row(
-            BButton(text=await tr("BACK", u["locale"]), callback_data="menu_main")
+            KButton(text=await tr("BACK", u["locale"]), callback_data="menu_main")
         )
         text = await tr("CHOOSE_CONFIG", u["locale"])
         await bot.edit_message_text(
@@ -815,11 +813,11 @@ async def callback_query(c):
     # Input from menu_main
     elif c.data.startswith("choose_language"):
         buttons = [
-            BButton(text="🇷🇺Русский(RU)", callback_data="set_language_ru"),
-            BButton(text="🇬🇧English(UK)", callback_data="set_language_en"),
-            BButton(text=await tr("BACK", u["locale"]), callback_data="menu_main"),
+            KButton(text="🇷🇺Русский(RU)", callback_data="set_language_ru"),
+            KButton(text="🇬🇧English(UK)", callback_data="set_language_en"),
+            KButton(text=await tr("BACK", u["locale"]), callback_data="menu_main"),
         ]
-        keyboard = BMarkup(row_width=1)
+        keyboard = KMarkup(row_width=1)
         keyboard.add(*buttons)
         text = "Choose language / Выберите язык"
         await bot.edit_message_text(
@@ -835,8 +833,8 @@ async def callback_query(c):
         lang = c.data.split("_")[-1]
         await db.execute("UPDATE users SET locale=%s WHERE id=%s", (lang, u["id"]))
         text = await tr("LANG_SET_SUCCESS", lang)
-        keyboard = BMarkup(
-            keyboard=[[BButton(text=await tr("BACK", lang), callback_data="menu_main")]]
+        keyboard = KMarkup(
+            keyboard=[[KButton(text=await tr("BACK", lang), callback_data="menu_main")]]
         )
         await bot.edit_message_text(
             text=text,
@@ -857,45 +855,45 @@ async def callback_query(c):
             (cfg["name"] if cfg["name"] else cfg["code_name"].split("_")[1:])
         )
         description = cfg["description"] or "-"
-        keyboard = BMarkup(
+        keyboard = KMarkup(
             keyboard=[
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BTN_SHOW_QR", u["locale"]),
                         callback_data=f"show_config_qr_{cfg_id}",
                     )
                 ],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BTN_GET_FILE", u["locale"]),
                         callback_data=f"show_config_conf_{cfg_id}",
                     )
                 ],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BTN_CONFIG_RESET", u["locale"]),
                         callback_data=f"config_reset_{cfg_id}",
                     )
                 ],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BTN_EXTEND_CONFIG", u["locale"]),
                         callback_data=f"extend_config_{cfg_id}",
                     )
                 ],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BTN_EDIT_CONFIG", u["locale"]),
                         callback_data=f"config_settings_{cfg_id}",
                     )
                 ],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BTN_CHANGE_LOCATION", u["locale"]),
                         callback_data=f"config_location_{cfg_id}",
                     )
                 ],
-                [BButton(text=await tr("BACK", u["locale"]), callback_data="menu_cfg")],
+                [KButton(text=await tr("BACK", u["locale"]), callback_data="menu_cfg")],
             ],
             row_width=1,
         )
@@ -952,9 +950,9 @@ async def callback_query(c):
         cfg = await db.fetchone(
             "SELECT name, code_name, location_id FROM configs WHERE id=%s", (cfg_id,)
         )
-        keyboard = BMarkup(row_width=2)
+        keyboard = KMarkup(row_width=2)
         buttons = [
-            BButton(
+            KButton(
                 text=i["name"],
                 callback_data=f"change_config_location_{cfg_id}_{i['id']}",
             )
@@ -964,7 +962,7 @@ async def callback_query(c):
             )
         ]
         buttons.append(
-            BButton(
+            KButton(
                 text=await tr("BACK", u["locale"]),
                 callback_data=f"config_menu_{cfg_id}",
             )
@@ -1036,22 +1034,22 @@ async def callback_query(c):
         locations = await db.fetchall(
             "SELECT id, name FROM locations WHERE is_active = 1"
         )
-        keyboard = BMarkup(row_width=2)
+        keyboard = KMarkup(row_width=2)
         buttons = [
-            BButton(text=i["name"], callback_data=f"choose_tariff_{type}_{i['id']}")
+            KButton(text=i["name"], callback_data=f"choose_tariff_{type}_{i['id']}")
             for i in locations
         ]
         if type == "free":
             buttons = [
-                BButton(text=i["name"], callback_data=f"config_free_{i['id']}")
+                KButton(text=i["name"], callback_data=f"config_free_{i['id']}")
                 for i in locations
             ]
         buttons.append(
-            BButton(text=await tr("BTN_SOON", u["locale"]), callback_data="soon")
+            KButton(text=await tr("BTN_SOON", u["locale"]), callback_data="soon")
         )
         keyboard.add(*buttons)
         keyboard.row(
-            BButton(text=await tr("BACK", u["locale"]), callback_data="menu_main")
+            KButton(text=await tr("BACK", u["locale"]), callback_data="menu_main")
         )
         text = await tr("CHOOSE_LOCATION", u["locale"])
         return await bot.edit_message_text(
@@ -1068,11 +1066,11 @@ async def callback_query(c):
         type, loc_id = c.data.split("_")[2:]
         if type == "buy":
             # buttons = [
-            #    BButton(text=f"{x}{await tr("MO", u['locale'])}({await price_counter(x)}{await tr("RUB", u['locale'])})", callback_data=f"choose_pay_buy_{loc_id}_{x}")
+            #    KButton(text=f"{x}{await tr("MO", u['locale'])}({await price_counter(x)}{await tr("RUB", u['locale'])})", callback_data=f"choose_pay_buy_{loc_id}_{x}")
             #    for x in tariff_multip.keys()
             # ]
             buttons = [
-                BButton(
+                KButton(
                     text=f"{x}{await tr('MO', u['locale'])}({await price_counter(x)}{await tr('RUB', u['locale'])})",
                     callback_data=f"pay_config_{loc_id}_{x}",
                 )
@@ -1084,21 +1082,21 @@ async def callback_query(c):
             )
             if cfg and cfg["price"] < 80:
                 # buttons = [
-                #    BButton(text=f"{x}{await tr("MO", u['locale'])}({await price_counter(x)}{await tr("RUB", u['locale'])})", callback_data=f"choose_pay_extend_{loc_id}_{x}")
+                #    KButton(text=f"{x}{await tr("MO", u['locale'])}({await price_counter(x)}{await tr("RUB", u['locale'])})", callback_data=f"choose_pay_extend_{loc_id}_{x}")
                 #    for x in tariff_multip.keys()
                 # ]
                 buttons = [
-                    BButton(
+                    KButton(
                         text=f"{x}{await tr('MO', u['locale'])}({await price_counter(x)}{await tr('RUB', u['locale'])})",
                         callback_data=f"pay_extend_config_{loc_id}_{x}",
                     )
                     for x in tariff_multip.keys()
                 ]
-        keyboard = BMarkup(row_width=2)
+        keyboard = KMarkup(row_width=2)
         keyboard.add(*buttons)
         if type == "buy":
             keyboard.row(
-                BButton(
+                KButton(
                     text=await tr("BACK", u["locale"]),
                     callback_data=f"choose_location_{type}",
                 )
@@ -1118,16 +1116,16 @@ async def callback_query(c):
         tariff_k = int(tariff_k)
         if type == "buy":
             buttons = [
-                # BButton(text="ЮKassa", callback_data=f"buy_config_{loc_id}_{tariff_k}"),
-                BButton(
+                # KButton(text="ЮKassa", callback_data=f"buy_config_{loc_id}_{tariff_k}"),
+                KButton(
                     text=await tr("BALANCE_PAY", u["locale"]),
                     callback_data=f"pay_config_{loc_id}_{tariff_k}",
                 )
             ]
         elif type == "extend":
             buttons = [
-                # BButton(text="ЮKassa", callback_data=f"buy_extend_config_{loc_id}_{tariff_k}"),
-                BButton(
+                # KButton(text="ЮKassa", callback_data=f"buy_extend_config_{loc_id}_{tariff_k}"),
+                KButton(
                     text=await tr("BALANCE_PAY", u["locale"]),
                     callback_data=f"pay_extend_config_{loc_id}_{tariff_k}",
                 )
@@ -1137,15 +1135,15 @@ async def callback_query(c):
             )
             if cfg["price"] < 80:
                 buttons = [
-                    BButton(
+                    KButton(
                         text=await tr("BALANCE", u["locale"]),
                         callback_data=f"pay_extend_config_{loc_id}_{tariff_k}",
                     )
                 ]
-        keyboard = BMarkup(row_width=2)
+        keyboard = KMarkup(row_width=2)
         keyboard.add(*buttons)
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BACK", u["locale"]),
                 callback_data=f"choose_tariff_{type}_{loc_id}",
             )
@@ -1174,13 +1172,13 @@ async def callback_query(c):
             text = (await tr("PAY_FROM_BALANCE", u["locale"])).format(
                 amount=summ, balance=u["balance"]
             )
-            keyboard = BMarkup(row_width=2)
+            keyboard = KMarkup(row_width=2)
             buttons = [
-                BButton(
+                KButton(
                     text=await tr("Оплатить", u["locale"]),
                     callback_data=f"accept_pay_config_{loc_id}_{summ}_{tariff_k}",
                 ),
-                BButton(
+                KButton(
                     text=await tr("Отмена", u["locale"]), callback_data="delete_mess"
                 ),
             ]
@@ -1193,16 +1191,16 @@ async def callback_query(c):
             )
         else:
             text = await tr("INSUFFICIENT_FUNDS", u["locale"])
-            keyboard = BMarkup(
+            keyboard = KMarkup(
                 keyboard=[
                     [
-                        BButton(
+                        KButton(
                             text=await tr("DEPOSIT", u["locale"]),
                             callback_data="baldeposit",
                         )
                     ],
                     [
-                        BButton(
+                        KButton(
                             text=await tr("BACK", u["locale"]),
                             callback_data="menu_main",
                         )
@@ -1235,7 +1233,7 @@ async def callback_query(c):
                 "SELECT code_name, name FROM configs WHERE id = %s", (cfg_id,)
             )
             text = await tr("CONFIG_HELP", u["locale"])
-            await config_help(c.message.chat.id, text, cfg["code_name"])
+            await config_help(c.message, text, cfg["code_name"])
     # Output Message(config_help, qr code, document)
 
     # Input _(config id)
@@ -1244,7 +1242,7 @@ async def callback_query(c):
         cfg = await db.fetchone("SELECT price FROM configs WHERE id = %s", (cfg_id,))
         if cfg["price"]:
             buttons = [
-                BButton(
+                KButton(
                     text=f"{x}{await tr('MO', u['locale'])}({await price_counter(x, cfg['price'])}{await tr('RUB', u['locale'])})",
                     callback_data=f"pay_extend_config_{cfg_id}_{x}",
                 )
@@ -1252,19 +1250,19 @@ async def callback_query(c):
             ]
         else:
             buttons = [
-                BButton(
+                KButton(
                     text=f"{x}{await tr('MO', u['locale'])}({await price_counter(x)}{await tr('RUB', u['locale'])})",
                     callback_data=f"pay_extend_config_{cfg_id}_{x}",
                 )
                 for x in tariff_multip.keys()
             ]
         buttons.append(
-            BButton(text=await tr("BTN_SOON", u["locale"]), callback_data="soon")
+            KButton(text=await tr("BTN_SOON", u["locale"]), callback_data="soon")
         )
-        keyboard = BMarkup(row_width=2)
+        keyboard = KMarkup(row_width=2)
         keyboard.add(*buttons)
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BACK", u["locale"]),
                 callback_data="config_menu_" + str(cfg_id),
             )
@@ -1289,13 +1287,13 @@ async def callback_query(c):
             text = (await tr("PAY_FROM_BALANCE", u["locale"])).format(
                 amount=summ, balance=u["balance"]
             )
-            keyboard = BMarkup(row_width=2)
+            keyboard = KMarkup(row_width=2)
             buttons = [
-                BButton(
+                KButton(
                     text=await tr("Оплатить", u["locale"]),
                     callback_data=f"accept_pay_extend_{cfg_id}_{summ}_{tariff_k}",
                 ),
-                BButton(
+                KButton(
                     text=await tr("Отмена", u["locale"]), callback_data="delete_mess"
                 ),
             ]
@@ -1359,16 +1357,16 @@ async def callback_query(c):
                 cfg["code_name"],
             )
         name = "".join(cfg["name"] if cfg["name"] else cfg["code_name"].split("_")[1:])
-        keyboard = BMarkup(
+        keyboard = KMarkup(
             keyboard=[
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BTN_SHOW_QR", u["locale"]),
                         callback_data=f"show_config_qr_{cfg_id}",
                     )
                 ],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BACK", u["locale"]),
                         callback_data=f"config_menu_{cfg_id}",
                     )
@@ -1412,16 +1410,16 @@ async def callback_query(c):
         name = "".join(
             (cfg["name"] if cfg["name"] else cfg["code_name"]).split("_")[1:]
         )
-        keyboard = BMarkup(
+        keyboard = KMarkup(
             keyboard=[
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BTN_GET_FILE", u["locale"]),
                         callback_data=f"show_config_conf_{cfg_id}",
                     )
                 ],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BACK", u["locale"]),
                         callback_data=f"config_menu_{cfg_id}",
                     )
@@ -1448,12 +1446,12 @@ async def callback_query(c):
             "SELECT name, code_name FROM configs WHERE id=%s", (cfg_id,)
         )
         name = cfg["name"] if cfg["name"] else "".join(cfg["code_name"].split("_")[1:])
-        keyboard = BMarkup(
+        keyboard = KMarkup(
             keyboard=[
-                [BButton(text="Название", callback_data=f"config_name_{cfg_id}")],
-                [BButton(text="Описание", callback_data=f"config_descript_{cfg_id}")],
+                [KButton(text="Название", callback_data=f"config_name_{cfg_id}")],
+                [KButton(text="Описание", callback_data=f"config_descript_{cfg_id}")],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BACK", u["locale"]),
                         callback_data=f"config_menu_{cfg_id}",
                     )
@@ -1534,10 +1532,10 @@ async def callback_query(c):
     # Input
     elif c.data.startswith("baldeposit"):
         balance_depos.append(u["id"])
-        keyboard = BMarkup(
+        keyboard = KMarkup(
             keyboard=[
                 [
-                    BButton(
+                    KButton(
                         text=await tr("CANCEL", u["locale"]),
                         callback_data="cancel_deposit",
                     )
@@ -1555,9 +1553,9 @@ async def callback_query(c):
 
     # Input
     elif c.data.startswith("cancel_deposit"):
-        keyboard = BMarkup(
+        keyboard = KMarkup(
             keyboard=[
-                [BButton(text=await tr("BACK", u["locale"]), callback_data="menu_main")]
+                [KButton(text=await tr("BACK", u["locale"]), callback_data="menu_main")]
             ]
         )
         try:
@@ -1575,16 +1573,16 @@ async def callback_query(c):
 
     # Input
     elif c.data.startswith("menu_account"):
-        keyboard = BMarkup(
+        keyboard = KMarkup(
             keyboard=[
                 [
-                    BButton(
+                    KButton(
                         text=await tr("REFERRAL_PROGRAM", u["locale"]),
                         callback_data="referal_menu",
                     )
                 ],
                 [
-                    BButton(
+                    KButton(
                         text=await tr("BACK", u["locale"]), callback_data="menu_main"
                     )
                 ],
@@ -1601,21 +1599,21 @@ async def callback_query(c):
 
     # Input from menu_account
     elif c.data.startswith("referal_menu"):
-        keyboard = BMarkup()
+        keyboard = KMarkup()
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BTN_MY_REF_CODE", u["locale"]),
                 callback_data="referal_get",
             )
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BTN_INPUT_REF_CODE", u["locale"]),
                 callback_data="referal_became",
             )
         )
         keyboard.row(
-            BButton(text=await tr("BACK", u["locale"]), callback_data="menu_account")
+            KButton(text=await tr("BACK", u["locale"]), callback_data="menu_account")
         )
         text = await tr("REFERRAL_MENU_TITLE", u["locale"])
         await bot.edit_message_text(
@@ -1642,15 +1640,15 @@ async def callback_query(c):
                 "SELECT referal_code FROM users WHERE id = %s", (u["id"],)
             )
         )["referal_code"]
-        keyboard = BMarkup()
+        keyboard = KMarkup()
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BTN_COPY_CODE", u["locale"]),
                 copy_text=types.CopyTextButton(text=code),
             )
         )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BTN_COPY_LINK", u["locale"]),
                 copy_text=types.CopyTextButton(
                     text=f"https://t.me/{(await bot.get_me()).username}?start={code}"
@@ -1658,7 +1656,7 @@ async def callback_query(c):
             )
         )
         keyboard.row(
-            BButton(text=await tr("BACK", u["locale"]), callback_data="referal_menu")
+            KButton(text=await tr("BACK", u["locale"]), callback_data="referal_menu")
         )
         text = (await tr("REF_CODE_TEXT", u["locale"])).format(code=code)
         await bot.edit_message_text(
@@ -1671,21 +1669,21 @@ async def callback_query(c):
 
     # Input from menu_main
     elif c.data.startswith("menu_information"):
-        keyboard = BMarkup()
+        keyboard = KMarkup()
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BOT_CHANNEL", u["locale"]),
                 url="https://t.me/Kirians_dev",
             )
         )
         keyboard.row(
-            BButton(text=await tr("BOT_SITE", u["locale"]), url="https://vpw.kirian.su")
+            KButton(text=await tr("BOT_SITE", u["locale"]), url="https://vpw.kirian.su")
         )
         keyboard.row(
-            BButton(text=await tr("VPN_HELP", u["locale"]), callback_data="help_vpn")
+            KButton(text=await tr("VPN_HELP", u["locale"]), callback_data="help_vpn")
         )
         keyboard.row(
-            BButton(text=await tr("BACK", u["locale"]), callback_data="menu_main")
+            KButton(text=await tr("BACK", u["locale"]), callback_data="menu_main")
         )
         text = await tr("BOT_INFO", u["locale"])
         await bot.edit_message_text(
@@ -1697,9 +1695,9 @@ async def callback_query(c):
     # Output Url / menu_main / help_vpn
 
     elif c.data.startswith("help_vpn"):
-        keyboard = BMarkup()
+        keyboard = KMarkup()
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("BACK", u["locale"]), callback_data="menu_information"
             )
         )
@@ -1748,7 +1746,7 @@ async def callback_query(c):
             "SELECT id, code_name, name, price, valid_until FROM configs WHERE user_id=%s AND status='active'",
             (u["id"],),
         )
-        keyboard = BMarkup(row_width=1)
+        keyboard = KMarkup(row_width=1)
         for cfg in cfgs:
             n_cfgs = ch_cfgs.copy()
             price = cfg["price"] if cfg["price"] else await price_counter(1)
@@ -1758,7 +1756,7 @@ async def callback_query(c):
             if str(cfg["id"]) in ch_cfgs:
                 n_cfgs.remove(str(cfg["id"]))
                 keyboard.add(
-                    BButton(
+                    KButton(
                         text=f"✅ {name}({price}{await tr('RUB', u['locale'])}/{await tr('MO', u['locale'])}) ({await tr('VALID_UNTIL', u['locale'])}: {'.'.join(str(str(cfg['valid_until']).split(' ')[0]).split('-')[::-1])})",
                         callback_data=f"cfgs:extnd:{','.join(n_cfgs)}",
                     )
@@ -1766,19 +1764,19 @@ async def callback_query(c):
             else:
                 n_cfgs.add(str(cfg["id"]))
                 keyboard.add(
-                    BButton(
+                    KButton(
                         text=f"❌ {name}({price}{await tr('RUB', u['locale'])}/{await tr('MO', u['locale'])}) ({await tr('VALID_UNTIL', u['locale'])}: {'.'.join(str(str(cfg['valid_until']).split(' ')[0]).split('-')[::-1])})",
                         callback_data=f"cfgs:extnd:{','.join(n_cfgs)}",
                     )
                 )
         keyboard.row(
-            BButton(
+            KButton(
                 text=await tr("PROCEED_TO_PAY", u["locale"]),
                 callback_data=f"p:cfgs:extnd:{','.join(ch_cfgs)}",
             )
         )
         keyboard.row(
-            BButton(text=await tr("BACK", u["locale"]), callback_data="menu_cfgs")
+            KButton(text=await tr("BACK", u["locale"]), callback_data="menu_cfgs")
         )
         if len(ch_cfgs) < 6:
             text = await tr("CHOOSE_CONFIGS_TO_EXTEND", u["locale"])
@@ -1824,13 +1822,13 @@ async def callback_query(c):
             text = (await tr("PAY_CONFIGS_FROM_BALANCE", u["locale"])).format(
                 amount=total_price, balance=u["balance"], name="\n".join(configs)
             )
-            keyboard = BMarkup(row_width=2)
+            keyboard = KMarkup(row_width=2)
             buttons = [
-                BButton(
+                KButton(
                     text=await tr("Оплатить", u["locale"]),
                     callback_data=f"a:p:cfgs:extnd:{total_price}:{','.join(cfgs)}",
                 ),
-                BButton(text=await tr("Отмена", u["locale"]), callback_data="menu_cfg"),
+                KButton(text=await tr("Отмена", u["locale"]), callback_data="menu_cfg"),
             ]
             keyboard.add(*buttons)
             await bot.edit_message_text(
@@ -1865,10 +1863,10 @@ async def callback_query(c):
                     + ", %s, valid_until) WHERE id=%s",
                     (amount, cfg_id),
                 )
-            keyboard = BMarkup(
+            keyboard = KMarkup(
                 keyboard=[
                     [
-                        BButton(
+                        KButton(
                             text=await tr("BACK", u["locale"]), callback_data="menu_cfg"
                         )
                     ]
@@ -1888,16 +1886,16 @@ async def callback_query(c):
             )
         else:
             text = await tr("INSUFFICIENT_FUNDS", u["locale"])
-            kb = BMarkup(
+            kb = KMarkup(
                 keyboard=[
                     [
-                        BButton(
+                        KButton(
                             text=await tr("DEPOSIT", u["locale"]),
                             callback_data="baldeposit",
                         )
                     ],
                     [
-                        BButton(
+                        KButton(
                             text=await tr("BACK", u["locale"]), callback_data="menu_cfg"
                         )
                     ],
@@ -2103,8 +2101,7 @@ async def day_chek():
 
 async def main():
     try:
-        r = await init_redis()
-        await db.init_pool(db_host, db_port, db_user, db_pass, db_table)
+        await db.init_pool(db_host, db_port, db_user, db_pass, db_name)
         await bot.delete_webhook(drop_pending_updates=True)
         daily_task = asyncio.create_task(daily_check(900))
         day_task = asyncio.create_task(day_chek())
@@ -2120,10 +2117,10 @@ async def main():
                 skip_pending=True,
             )
         )
+        await asyncio.gather(daily_task, bot_task, day_task)
     finally:
-        await close_redis()
+        await db.close_pool()
 
-    await asyncio.gather(daily_task, bot_task, day_task)
 
 
 if __name__ == "__main__":
