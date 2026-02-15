@@ -336,15 +336,17 @@ async def sendto(m):
 @bot.message_handler(
     content_types=["photo"],
     chat_types=["private"],
-    func=lambda m: m.caption
-    and any(
-        [
-            m.caption.startswith(i)
-            for i in (
-                "/sendto",
-                "/reply",
-            )
-        ]
+    func=lambda m: (
+        m.caption
+        and any(
+            [
+                m.caption.startswith(i)
+                for i in (
+                    "/sendto",
+                    "/reply",
+                )
+            ]
+        )
     ),
 )
 async def sendto_photo(m):
@@ -2113,14 +2115,14 @@ async def main():
                     "pre_checkout_query",
                     "successful_payment",
                 ],
-                request_timeout=120,
+                timeout=60,
+                request_timeout=75,
                 skip_pending=True,
             )
         )
         await asyncio.gather(daily_task, bot_task, day_task)
     finally:
         await db.close_pool()
-
 
 
 if __name__ == "__main__":

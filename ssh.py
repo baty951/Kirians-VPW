@@ -33,7 +33,7 @@ async def reset_key(host: str, ssh_key: str, directory: str, cfg_name: str):
                 f" && ./venv/bin/python awgcfg.py -c -q --dir '{directory}configs'"
             )
             await conn.run(cmd)
-            await conn.run("systemctl restart awg-quick@awg0.service")
+        await conn.run("systemctl restart awg-quick@awg0.service")
     except (OSError, asyncssh.Error) as exc:
         print(f"SSH connection failed: {exc}")
 
@@ -46,9 +46,10 @@ async def del_key(host: str, ssh_key: str, directory: str, cfg_name: str | list[
             cfg_name = list(cfg_name)
         for cfg in cfg_name:
             async with asyncssh.connect(host=host, client_keys=[ssh_key]) as conn:
-                cmd = f"cd {directory} && ./venv/bin/python3 awgcfg.py -d '{cfg}'"
-                await conn.run(cmd)
-                await conn.run("systemctl restart awg-quick@awg0.service")
+                await conn.run(
+                    f"cd {directory} && ./venv/bin/python3 awgcfg.py -d '{cfg}'"
+                )
+        await conn.run("systemctl restart awg-quick@awg0.service")
     except (OSError, asyncssh.Error) as exc:
         print(f"SSH key delete failed: {exc}")
 
@@ -97,6 +98,17 @@ async def get_qr(host: str, ssh_key: str, directory: str, cfg_name: str):
             async with conn.start_sftp_client() as sftp:
                 await sftp.get(
                     f"{directory}configs/{cfg_name}.png", f"./configs/{cfg_name}.png"
+                )
+    except (OSError, asyncssh.Error) as exc:
+        print(f"SSH connection failed: {exc}")
+
+
+async def get_txt(host: str, ssh_key: str, directory: str, cfg_name: str):
+    try:
+        async with asyncssh.connect(host=host, client_keys=[ssh_key]) as conn:
+            async with conn.start_sftp_client() as sftp:
+                await sftp.get(
+                    f"{directory}configs/{cfg_name}.txt", f"./configs/{cfg_name}.txt"
                 )
     except (OSError, asyncssh.Error) as exc:
         print(f"SSH connection failed: {exc}")
