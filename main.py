@@ -1292,20 +1292,41 @@ async def callback_query(c):
             keyboard = KMarkup(row_width=2)
             buttons = [
                 KButton(
-                    text=await tr("Оплатить", u["locale"]),
+                    text=await tr("PAY", u["locale"]),
                     callback_data=f"accept_pay_extend_{cfg_id}_{summ}_{tariff_k}",
                 ),
                 KButton(
-                    text=await tr("Отмена", u["locale"]), callback_data="delete_mess"
+                    text=await tr("CANCEL", u["locale"]),
+                    callback_data="delete_mess",
+                    style="danger",
                 ),
             ]
             keyboard.add(*buttons)
-            await bot.edit_message_text(
-                text=text,
-                chat_id=c.message.chat.id,
-                message_id=c.message.id,
-                reply_markup=keyboard,
+        else:
+            text = (await tr("PAY_FROM_BALANCE", u["locale"])).format(
+                amount=summ, balance=u["balance"]
             )
+            keyboard = KMarkup(
+                keyboard=[
+                    [
+                        KButton(
+                            text=await tr("DEPOSIT", u["locale"]),
+                            callback_data="baldeposit",
+                        ),
+                        KButton(
+                            text=await tr("CANCEL", u["locale"]),
+                            callback_data="delete_mess",
+                            style="danger",
+                        ),
+                    ]
+                ]
+            )
+        await bot.edit_message_text(
+            text=text,
+            chat_id=c.message.chat.id,
+            message_id=c.message.id,
+            reply_markup=keyboard,
+        )
     # Output accept_pay_extend_(config id)_(summ)_(tariff key) / delete_mess
 
     # Input _(config id)_(summ)_(tariff key)
@@ -1540,6 +1561,7 @@ async def callback_query(c):
                     KButton(
                         text=await tr("CANCEL", u["locale"]),
                         callback_data="cancel_deposit",
+                        style="danger",
                     )
                 ]
             ]
@@ -2099,6 +2121,46 @@ async def day_chek():
                     chat_id=ADMIN,
                     text=f"Не удалось отправить сообщение пользователю {notify['first_name']}({notify['usrname']})",
                 )
+
+
+async def expired_check():
+    await db.execute(
+        "UPDATE configs SET status='expired' WHERE status='active' AND valid_until <= NOW() AND auto_renew=0"
+    )
+    locs = await db.fetchall(
+        "SELECT DISTINCT l.id, l.host, l.key_path, l.directory FROM configs c JOIN locations l ON c.location_id = l.id WHERE c.status='expired'"
+    )
+    for loc in locs:
+        cfgs = await db.fetchall(
+            "SELECT id, code_name, user_id FROM configs WHERE status='expired' and location_id=%s",
+            (loc["id"],),
+        )
+        cfgs_names = [cfg["code_name"] for cfg in cfgs]
+        await ssh.del_key(loc["host"], loc["key_path"], loc["directory"], cfgs_names)
+    users = await db.fetchall(
+        "SELECT DISTINCT u.tg_user_id, u.id, u.locale FROM configs c JOIN users u ON c.user_id=u.id WHERE c.status='expired'"
+    )
+    for user in users:
+        cfgs = await db.fetchall(
+            "SELECT id, code_name, name FROM configs WHERE user_id =%s", (user["id"],)
+        )
+        cfgs_names = [
+            cfg["name"]
+            if cfg.get("name") is not None
+            else "".join(cfg["code_name"].split("_")[1:])
+            for cfg in cfgs
+        ]
+        text = (
+            (await tr("CONFIGS_EXPIRED", user["locale"])).format(
+                name="\n".join(cfgs_names)
+            )
+            if len(cfgs_names) > 1
+            else (await tr("CONFIGS_EXPIRED", user["locale"])).format(
+                name="".join(cfgs_names)
+            )
+        )
+        await safe_send(user["tg_user_id"], text)
+    await db.execute("UPDATE configs SET status='archived' WHERE status='expired'")
 
 
 async def main():
